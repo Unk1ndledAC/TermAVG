@@ -27,10 +27,16 @@
     - [克隆与构建](#克隆与构建)
     - [运行](#运行)
   - [配置文件](#配置文件)
+    - [setting 字段说明](#setting-字段说明)
   - [脚本说明](#脚本说明)
-    - [分段规则](#分段规则)
-    - [常见命令](#常见命令)
+    - [脚本分段与文件格式](#脚本分段与文件格式)
+    - [脚本读取与执行机制](#脚本读取与执行机制)
+    - [脚本环境：对象、函数与方法](#脚本环境对象函数与方法)
+    - [常见命令语法](#常见命令语法)
     - [最小示例](#最小示例)
+  - [layout 布局说明](#layout-布局说明)
+    - [坐标与尺寸约定](#坐标与尺寸约定)
+    - [layout.toml 字段含义](#layouttoml-字段含义)
   - [开发说明](#开发说明)
   - [依赖](#依赖)
   - [贡献](#贡献)
@@ -91,29 +97,101 @@ cargo run 2> debug.txt
 `setting.toml` 关键字段示例：
 
 ```toml
-resolution = [240, 80]
+resolution = [240, 67]
+preprogress_script = ["resource/script_example.fs"]
 is_force_skipable = false
 save_dir = "save"
-entre_script = "resource/script.fs"
-default_bg_img = "resource/default_background_img.png"
+entre_script = "resource/script_example.fss"
+mainmenu_title_file = "resource/mainmenu_title.txt" # 可选
+mainmenu_default_bg_img = "resource/main_menu_bg.png"
+mainmenu_session_bg_map = []
+default_bg_img = "resource/bg_0.png"
 default_face_img = "resource/default_face_img.png"
+max_history_ls = 60
 ```
 
-- `resolution`: 终端渲染尺寸（字符单位）。
-- `save_dir`: 存档目录。
-- `entre_script`: 入口脚本路径。
-- `default_bg_img` / `default_face_img`: 默认背景和头像资源,是必须的
+### setting 字段说明
+
+- `resolution: [w, h]`：逻辑渲染分辨率（字符格单位），游戏主画面会按这个尺寸居中绘制。
+- `preprogress_script: []`：需要预处理的脚本列表。启动时会把这些 `*.fs` 转成带段号的 `*.fss`（见下文机制）。
+- `is_force_skipable`：预留字段，当前版本尚未在运行时逻辑中消费。
+- `save_dir`：存档目录（普通槽位与 `temp.save` 都在这里）。
+- `entre_script`：入口脚本路径（通常指向预处理后的 `*.fss`）。
+- `mainmenu_title_file`：主菜单标题文本文件路径（可选，不填则用默认标题效果）。
+- `mainmenu_default_bg_img`：主菜单默认背景图。
+- `mainmenu_session_bg_map`：主菜单背景映射列表，按 `session_id` 区间匹配背景图：
+  - `session_id_min` / `session_id_max`：生效区间。
+  - `bg_img`：该区间使用的背景图。
+- `default_bg_img` / `default_face_img`：历史兼容字段，当前主流程未直接读取，可按项目需要在自定义脚本/行为层使用。
+- `max_history_ls`：历史兼容字段，当前历史上限由内部实现固定值控制，尚未连接到此配置项。
 
 > 注意：路径均相对于项目根目录解析。
 
 ## 脚本说明
 
-### 分段规则
+### 脚本分段与文件格式
 
 脚本使用 `#数字` 作为段落分隔标记，例如 `#1`、`#2`。引擎按段读取剧情内容。
-脚本后缀为`fss`, 你也可以在setting中指定需要自动添加`#`序号的文件,会在游戏开始时处理生成对应的`fss`文件.目前默认路径在`resource`下
+推荐把运行入口写成 `*.fss`。若你只维护 `*.fs`（`#` 后不带数字），可以通过 `preprogress_script` 在启动时自动补号并生成 `*.fss`。
 
-### 常见命令
+### 脚本读取与执行机制
+
+1. **启动预处理（可选）**
+   - `Game::new()` 会遍历 `setting.preprogress_script`。
+   - 每个源脚本会被处理为 `resource/<同名>.fss`，规则是把形如 `#` 的段标记自动补成 `#1/#2/...`。
+2. **进入剧情时初始化脚本环境**
+   - 创建 `ScriptContext`，注册全局变量、全局函数、类型（如 `character`、`text_obj`）和行为映射。
+   - 入口脚本来自 `setting.entre_script`。
+3. **按段流式读取**
+   - `StreamSectionReader` 每次按 `session_id` 读取一段（从 `#N` 到下一段标记前）。
+   - 到文件末尾会返回 EOF，剧情结束后回主菜单。
+4. **解析成命令**
+   - `ScriptParser`（词法+语法）将段文本转换为命令序列（`set/once/wait/call/assignment/chain`）。
+5. **解释执行（逐帧）**
+   - `Interpreter` 将本段命令注入 `SessionExecutor`。
+   - 每帧 `update()` 执行；遇到 `wait` 会进入等待态（时间等待或输入等待）。
+   - 段结束会触发 `once` 回滚：本段通过 `once` 改过的值会恢复，避免跨段污染。
+
+### 脚本环境：对象、函数与方法
+
+运行时可用对象/常量会在启动时输出到项目根目录的 `script_env.txt`，用于查阅与调试。
+
+全局对象（核心）：
+
+- `bg`：背景状态（图片、黑边开关）。
+- `bgm`：背景音乐状态。
+- `env_effect`：环境音状态。
+- `frame`：对话框状态（显示、内容、打字机参数等）。
+- `paragraph`：旁白/大段文本区状态。
+- `chapter`：章节标题/副标题状态。
+- `character_ls`：当前显示角色列表。
+- `layers`：动态图层表（可增删）。
+
+全局函数（常用）：
+
+- `text(content)`：写入 `frame.content` 并直接驱动 `FrameBehaviour`（旁白模式：无说话人、无头像）。
+- `voice(path)`：播放语音；传空字符串停止语音轨。
+- `add_layer(type, [name], source)`：添加动态图层。
+- `del_layer(name)`：删除动态图层。
+- `see(name)`：打印指定可视元素当前信息（调试）。
+- `log(path_or_expr)`：打印某个脚本路径值（调试）。
+- `save_to(table, target_path)`：将脚本表序列化到文件。
+- `create_default_character(path)`：生成默认角色配置文件模板。
+
+对象方法（常用）：
+
+- `bg.set(path)` / `bg.trans_to(path, duration)` / `bg.show_edge()` / `bg.hide_edge()`
+  - `bg.set("")` 支持清空背景图，此时会按主题色稳定填充背景区域。
+- `bgm.set(path, [fade_type])`
+- `env_effect.set(path)`
+- `frame.show()` / `frame.hide()` / `frame.set_mode(mode)`
+- `paragraph.show()` / `paragraph.hide()` / `paragraph.print(text)` / `paragraph.new(text)` / `paragraph.clear()`
+- `chapter.show_title(title, [duration])` / `chapter.show_sub_title(subtitle, [duration])`
+  - 传空字符串可隐藏对应标题（例如 `chapter.show_title "" 0.2`）。
+- `character.say(text)`（`character` 实例方法）
+- `character_ls.set_characters(c1, c2, ...)`
+
+### 常见命令语法
 
 根据当前解析器，脚本支持以下形式：
 
@@ -130,6 +208,35 @@ default_face_img = "resource/default_face_img.png"
 <a href="https://github.com/rabitank/TermAVG/blob/main/resource/script_example.fs">查看示例脚本</a>
 
 另外,运行后将生成`script_env.txt`文件打印所有脚本环境可用的对象和方法,可以辅助调试和写脚本.
+
+## layout 布局说明
+
+`layout.toml` 决定了剧情页、主菜单和弹窗在逻辑坐标系中的布局。
+
+### 坐标与尺寸约定
+
+- `ltwh`：`(left, top, width, height)`。
+- `twh`：`(top, width, height)`（横向默认居中，由角色数量和间距推导 x）。
+- `lw`：`(left, width)`。
+- `wh`：`(width, height)`。
+
+### layout.toml 字段含义
+
+- `character_twh`：角色立绘框 `(top, width, height)`。
+- `two_character_spec`：2 人同屏时间距。
+- `x_character_spec`：3 人及以上同屏时间距。
+- `vertical_dark_edge`：背景上下黑边高度。
+- `frame_face_ltwh`：头像框区域。
+- `frame_content_ltwh`：对话框主体区域。
+- `text_ltwh`：对话正文文本区域（在 `frame_content` 内裁剪）。
+- `frame_name_ltwh`：说话人名字区域。
+- `short_key_ltwh`：底部快捷键提示条区域。
+- `chapter_title_ltwh`：章节标题区域。
+- `chapter_subtitle_ltwh`：章节副标题区域。
+- `paragraph_ltwh`：旁白/段落文本框区域。
+- `history_wh`：历史记录弹窗宽高。
+- `mainmenu_lw`：主菜单列表面板的 `(left, width)`。
+- `mainmenu_load_pop_lw`：主菜单下 Load 弹窗的 `(left, width)`；当 `width = 0` 时使用剩余宽度。
 
 ## 开发说明
 

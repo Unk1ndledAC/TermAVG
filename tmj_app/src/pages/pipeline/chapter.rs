@@ -36,7 +36,7 @@ impl Default for ChapterBehaviour {
 }
 
 impl ChapterBehaviour {
-    fn export_show_title(&mut self, show_time: std::time::Duration, title: String) {
+    pub fn export_show_title(&mut self, show_time: std::time::Duration, title: String) {
         self.title = title;
         self.title_alpha_ani.reset();
         self.title_alpha_ani.start_alpha = 0.0;
@@ -44,7 +44,7 @@ impl ChapterBehaviour {
         self.title_alpha_ani.anim_time = show_time;
     }
 
-    fn export_show_sub_title(&mut self, show_time: std::time::Duration, title: String) {
+    pub fn export_show_sub_title(&mut self, show_time: std::time::Duration, title: String) {
         self.subtitle = title;
         self.subtitle_alpha_ani.reset();
         self.subtitle_alpha_ani.start_alpha = 0.0;
@@ -74,7 +74,7 @@ impl Behaviour for ChapterBehaviour {
         Ok(vec![
             VisualElement {
                 name: Self::CHAPTER_TITLE.to_string(),
-                visible: true,
+                visible: false,
                 alpha: 0.0,
                 z_index: 1,
                 rect: title_rect,
@@ -86,7 +86,7 @@ impl Behaviour for ChapterBehaviour {
             },
             VisualElement {
                 name: Self::CHAPTER_SUBTITLE.to_string(),
-                visible: true,
+                visible: false,
                 alpha: 0.0,
                 z_index: 2,
                 rect: subtitle_rect,
@@ -102,16 +102,17 @@ impl Behaviour for ChapterBehaviour {
     fn update_elements(
         &self,
         _screen: &DialogueScene,
-        ctx: &tmj_core::script::ContextRef,
+        _ctx: &tmj_core::script::ContextRef,
         elements: &mut Vec<VisualElement>,
     ) -> anyhow::Result<()> {
 
         if let Some(title) = elements.iter_mut().find(|x| x.name == Self::CHAPTER_TITLE) {
-            self.title_alpha_ani.apply_to_ve(title);
+            self.title_alpha_ani.apply_to_ve(title)?;
 
             if self.title.is_empty() {
                 title.visible = false;
             } else {
+                title.visible = true;
                 if let VisualElementKind::Text { content } = &mut title.kind {
                     *content = self.title.clone();
                 }
@@ -122,10 +123,11 @@ impl Behaviour for ChapterBehaviour {
             .iter_mut()
             .find(|x| x.name == Self::CHAPTER_SUBTITLE)
         {
-            self.subtitle_alpha_ani.apply_to_ve(subtitle);
+            self.subtitle_alpha_ani.apply_to_ve(subtitle)?;
             if self.subtitle.is_empty() {
                 subtitle.visible = false;
             } else {
+                subtitle.visible = true;
                 if let VisualElementKind::Text { content } = &mut subtitle.kind {
                     *content = self.subtitle.clone();
                 }
@@ -165,18 +167,6 @@ impl Behaviour for ChapterBehaviour {
 }
 
 impl ChapterBehaviour {
-    pub const CHAPTER_TITLE: &'static str =
-        constcat::concat!(CHAPTER, ".", crate::pages::script_def::var_chapter::TITLE);
-    pub const CHAPTER_SUBTITLE: &'static str = constcat::concat!(
-        CHAPTER,
-        ".",
-        crate::pages::script_def::var_chapter::SUBTITLE
-    );
-    pub const CHAPTER_ALPHA: &'static str =
-        constcat::concat!(CHAPTER, ".", crate::pages::script_def::var_chapter::ALPHA);
-    pub const CHAPTER_ALPHA_SPEED: &'static str = constcat::concat!(
-        CHAPTER,
-        ".",
-        crate::pages::script_def::var_chapter::ALPHA_SPEED
-    );
+    pub const CHAPTER_TITLE: &'static str = "chapter.title";
+    pub const CHAPTER_SUBTITLE: &'static str = "chapter.subtitle";
 }

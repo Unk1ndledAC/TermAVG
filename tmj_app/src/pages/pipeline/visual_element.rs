@@ -71,7 +71,6 @@ pub struct VisualElement {
     pub border: bool,
     pub border_style: Style,
     pub border_type: ratatui::widgets::BorderType,
-    pub alpha_speed: f64,
     pub kind: VisualElementKind,
     pub style: Style,
 }
@@ -91,7 +90,6 @@ impl Default for VisualElement {
             text_wrap: Some(Wrap { trim: false }),
             text_scroll: (0, 0),
             alpha: 1.0,
-            alpha_speed: 0.0,
             border: false,
             border_style: Style::default(),
             border_type: ratatui::widgets::BorderType::Rounded,

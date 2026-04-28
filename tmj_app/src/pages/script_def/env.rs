@@ -2,20 +2,20 @@ use tmj_core::{
     audio::AudioOp,
     pathes,
     script::{
-        ContextRef, Interpreter, IntoScriptValue, ScriptContext, ScriptValue, lower_str,
+        ContextRef, IntoScriptValue, ScriptContext, ScriptValue, lower_str,
     },
 };
 
 use crate::audio::{AUDIOM, Tracks, load_audio};
 
 use crate::
-    pages::
+    pages::{
+        pipeline::{FrameBehaviour, with_behaviour_mut_from_ctx},
         script_def::{
             BaseVariable, Character, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect, VFrame,
             VLayer, VParagraph, var_frame, var_layer,
-        }
-    
-;
+        },
+    };
 
 macro_rules! script_str {
     ($ctx:ident, $name:ident) => {
@@ -29,7 +29,6 @@ macro_rules! script_str {
 
 // global member
 lower_str!(BGIMG_PATH);
-lower_str!(FACE_PATH);
 lower_str!(BEHAVIOURS_MAP);
 pub use super::var_bg::BG;
 pub use super::var_bgm::BGM;
@@ -74,7 +73,6 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMa
         script_str!(ctx, FADE_IN);
         script_str!(ctx, FADE_OUT);
         script_str!(ctx, TRANSITION);
-        script_str!(ctx, FACE_PATH, "");
         ctx.set_global_val(BEHAVIOURS_MAP, ScriptValue::rust_object(behaviours));
     }
     {
@@ -182,23 +180,15 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMa
                 .first()
                 .and_then(|x| x.as_str())
                 .ok_or(anyhow::anyhow!("text requires content string"))?;
-
-            Interpreter::eval_cmds(
-                vec![
-                    // 设置这一回的文本
-                    tmj_core::script::Command::Once {
-                        path: format!("{FRAME}.{:}", var_frame::CONTENT),
-                        args: vec![ScriptValue::string(raw_text)],
-                    },
-                    // text 用于旁白：隐藏头像
-                    tmj_core::script::Command::Once {
-                        path: FACE_PATH.to_string(),
-                        args: vec![ScriptValue::string("")],
-                    },
-                ],
-                c.clone(),
-            )
-            .map_err(|e| anyhow::anyhow!(e))?;
+            {
+                // Keep script table in sync for debugging/introspection.
+                c.borrow_mut()
+                    .set_table_member(FRAME, var_frame::CONTENT, ScriptValue::string(raw_text))
+                    .map_err(|e| anyhow::anyhow!(e))?;
+            }
+            with_behaviour_mut_from_ctx::<FrameBehaviour, _>(c, |b| {
+                b.export_text(raw_text.to_string());
+            })?;
 
             Ok(ScriptValue::Nil)
         });

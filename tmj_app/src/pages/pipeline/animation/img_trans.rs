@@ -10,7 +10,7 @@ use tmj_core::{img::shape::Pic, script::TypeName};
 use crate::{
     art::{
         halfblock::mix_into_cell,
-        theme::{self, Theme},
+        theme,
     },
     pages::pipeline::{animation::Animation, visual_element::VisualElementKind},
 };
@@ -35,7 +35,11 @@ impl AniImgTrans {
         } else {
             let mut fill_cell = Cell::new(" ");
             fill_cell.set_bg(default_bg);
-            *buffer = Buffer::filled(rect, fill_cell);
+            for row in rect.rows() {
+                for col in row.columns() {
+                    buffer[(col.x, col.y)] = fill_cell.clone();
+                }
+            }
         };
         Ok(())
     }

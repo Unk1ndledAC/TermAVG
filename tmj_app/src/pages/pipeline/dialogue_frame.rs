@@ -15,7 +15,7 @@ use crate::{
             animation::{self, Animation},
             logical_area,
             visual_element::{VisualElement, VisualElementCustomDrawer, VisualElementKind},
-        }, pop_items::HISTORY_LS, script_def::var_frame
+        }, script_def::var_frame
     },
 };
 
@@ -202,7 +202,7 @@ impl Behaviour for FrameBehaviour {
         }
 
         if let Some(ve) = elements.iter_mut().find(|x| x.name == Self::VE_FRAME_TEXT) {
-            self.typewriter.apply_to_ve(ve);
+            self.typewriter.apply_to_ve(ve)?;
         }
 
         if let Some(ve) = elements.iter_mut().find(|x| x.name == Self::VE_FACE) {

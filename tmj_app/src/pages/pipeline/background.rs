@@ -148,7 +148,7 @@ impl Behaviour for BackgroundBehaviour {
         elements: &mut Vec<VisualElement>,
     ) -> anyhow::Result<()> {
         if let Some(bg) = elements.iter_mut().find(|x| x.name == Self::VE_BG) {
-            self.img_trans_ani.apply_to_ve(bg);
+            self.img_trans_ani.apply_to_ve(bg)?;
         }
         if let Some(top) = elements.iter_mut().find(|x| x.name == Self::VE_EDGE_TOP) {
             top.visible = self.is_edge;
