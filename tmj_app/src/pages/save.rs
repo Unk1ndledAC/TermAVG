@@ -1,9 +1,8 @@
 use crate::pages::{Screen, UserScreen};
-use crate::pages::slot::{SAVE_MANAGER, SlotManager};
+use crate::pages::slot::{SAVE_MANAGER, SlotDrawMode, SlotManager};
 use ratatui::Frame;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::layout::Margin;
-use ratatui::style::Color;
 use ratatui::text::Text;
 use ratatui::widgets::{Block, Clear, Paragraph};
 use ratatui::{
@@ -16,6 +15,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use tmj_core::command::{CmdBuffer, GameCmd, SaveSlot};
 use tmj_core::event::handler::EventDispatcher;
+use crate::art::theme;
 
 const SLOT_LIST_MG: usize = 2;
 
@@ -25,7 +25,15 @@ pub struct SaveScreen {
     renaming: String,
 }
 
-impl Screen for SaveScreen {}
+impl Screen for SaveScreen {
+    fn active(
+        &mut self,
+        _named_args: &crate::gameflow::NamedArgs,
+    ) -> anyhow::Result<super::ScreenActRespond> {
+        self.slot_list.borrow_mut().set_draw_mode(SlotDrawMode::Save);
+        Ok(super::ScreenActRespond::default())
+    }
+}
 
 enum EditState {
     Selecting,
@@ -35,8 +43,9 @@ enum EditState {
 
 impl SaveScreen {
     pub fn spawn(_name_args: HashMap<&str, &str>) -> Self {
+        let slot_list = SAVE_MANAGER.with(|s| s.clone());
         Self {
-            slot_list: SAVE_MANAGER.with(|s| s.clone()),
+            slot_list,
             edit_state: EditState::Selecting,
             renaming: "".into(),
         }
@@ -127,17 +136,22 @@ impl super::Draw for SaveScreen {
 
         let title_rect = chunks[0];
 
-        let title =
-            Line::from_iter([Span::from("Save").bold(), Span::from("<Enter> to save")]).centered();
+        let title = Line::from_iter([
+            Span::from("Save").bold().style(theme::THEME.slot_list.save.title),
+            Span::from(" <Enter> to save").style(theme::THEME.slot_list.save.hint),
+        ])
+        .centered();
         frame.render_widget(title, title_rect);
 
         if let EditState::Creating = self.edit_state {
             let rename_rect = area.centered(Constraint::Length(30), Constraint::Length(3));
-            let rename_block = Block::bordered().title_top("slot name").light_blue();
+            let rename_block = Block::bordered()
+                .title_top("slot name")
+                .style(theme::THEME.save_screen.rename_block);
             let name = Text::from(
                 Line::from(self.renaming.clone())
                     .bold()
-                    .fg(Color::White)
+                    .style(theme::THEME.save_screen.rename_text)
                     .left_aligned(),
             );
             let p = Paragraph::new(name).block(rename_block).centered();

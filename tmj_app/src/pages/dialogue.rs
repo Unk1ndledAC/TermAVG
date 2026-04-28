@@ -84,6 +84,7 @@ pub struct DialogueScene {
     need_rebuild_ve: RefCell<bool>,
     history_ls: Option<DialogueHistoryLs>,
     cmd_input: Option<CmdInputItem>,
+    pre_session_ctx: Option<SerializableContext>,
 }
 
 impl DialogueScene {
@@ -148,7 +149,8 @@ impl Screen for DialogueScene {
     fn sleep(&mut self) -> anyhow::Result<super::ScreenActRespond> {
         // 进入: newgame 或者 continue 或者 load
         // 后两个都是导入存档文件
-        self.reset_to_begin();
+        CmdBuffer::push(GameCmd::SaveTo(tmj_core::command::SaveSlot::Temp));
+        self.reset_to_begin()?;
         let resp = ScreenActRespond::default();
         Ok(resp)
     }
@@ -192,6 +194,7 @@ impl DialogueScene {
             need_rebuild_ve: RefCell::new(true),
             history_ls: None,
             cmd_input: None,
+            pre_session_ctx: None,
         };
         scene
     }
@@ -234,8 +237,13 @@ impl DialogueScene {
     }
 
     pub fn save_to(&self) -> anyhow::Result<String> {
-        let ctx = self.interpreter.borrow().context();
-        let ctx = ScriptContext::serialize(&ctx);
+        let ctx = match &self.pre_session_ctx {
+            Some(ctx) => ctx.clone(),
+            None => {
+                let ctx = self.interpreter.borrow().context();
+                ScriptContext::serialize(&ctx)
+            }
+        };
         let save = DialogueSceneSave {
             session_id: self.session_id,
             ctx,
@@ -249,6 +257,7 @@ impl DialogueScene {
             .context("DialougeScene SaveStr Deserialize failed")?;
         self.session_id = save.session_id;
         let ctx = save.ctx;
+        self.pre_session_ctx = Some(ctx.clone());
         ScriptContext::deserialize(&self.interpreter.borrow_mut().context(), ctx)
             .map_err(|e| anyhow::anyhow!(e))?;
         *self.need_rebuild_ve.borrow_mut() = true;
@@ -339,6 +348,8 @@ impl DialogueScene {
             .load_sessions()
             .context("apply current session load session failed")?;
 
+        let ctx = self.interpreter.borrow().context();
+        self.pre_session_ctx = Some(ScriptContext::serialize(&ctx));
         self.interpreter.borrow_mut().start_session(session);
 
         if read_to_eof {
@@ -374,6 +385,7 @@ impl DialogueScene {
 
         self.visual_elements.borrow_mut().clear();
         *self.need_rebuild_ve.borrow_mut() = true;
+        self.pre_session_ctx = None;
 
         // todo! clear ves, clear interpreter env
         Ok(())

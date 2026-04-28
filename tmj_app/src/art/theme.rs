@@ -1,21 +1,17 @@
 
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 
 pub struct Theme {
     pub root: Style,
     pub content: Style,
-    pub app_title: Style,
-    pub tabs: Style,
-    pub tabs_selected: Style,
     pub borders: Style,
-    pub description: Style,
-    pub description_title: Style,
     pub key_binding: KeyBinding,
-    pub logo: Logo,
     pub dialouge: Dialogue,
-    pub load: Load,
-    pub save: Save,
-    pub history: History
+    pub history: History,
+    pub main_menu: MainMenu,
+    pub slot_list: SlotList,
+    pub save_screen: SaveScreenTheme,
+    pub load_screen: LoadScreenTheme,
 }
 
 pub struct KeyBinding {
@@ -23,19 +19,8 @@ pub struct KeyBinding {
     pub description: Style,
 }
 
-pub struct Logo {
-    pub rat_eye: Color,
-    pub rat_eye_alt: Color,
-}
-
 pub struct Dialogue {
-    pub tabs: Style,
-    pub tabs_selected: Style,
     pub inbox: Style,
-    pub item: Style,
-    pub selected_item: Style,
-    pub header: Style,
-    pub header_value: Style,
     pub block: Style,
     pub black_edge: Style,
     pub name: Style,
@@ -44,104 +29,98 @@ pub struct Dialogue {
     pub background: Style,
 }
 
-pub struct Load {
-    pub header: Style,
-    pub selected: Style,
-    pub ping: Style,
-    pub map: Map,
-}
-
-pub struct Map {
-    pub style: Style,
-    pub color: Color,
-    pub path: Color,
-    pub source: Color,
-    pub destination: Color,
-    pub background_color: Color,
-}
-
-pub struct Save {
-    pub ingredients: Style,
-    pub ingredients_header: Style,
-}
-
 pub struct History {
     pub base: Style,
     pub item_border: Style,
     pub say_item: Style,
-    pub text_item: Style
+    pub text_item: Style,
+}
+
+pub struct MainMenu {
+    pub item: Style,
+    pub disabled_item: Style,
+    pub selected_item: Style,
+}
+
+pub struct SlotList {
+    pub save: SlotListVariant,
+    pub load: SlotListVariant,
+    pub selected_item: Style,
+}
+
+pub struct SlotListVariant {
+    pub slot_id: Style,
+    pub slot_info: Style,
+    pub empty_item: Style,
+    pub title: Style,
+    pub hint: Style,
+}
+
+pub struct SaveScreenTheme {
+    pub rename_block: Style,
+    pub rename_text: Style,
+}
+
+pub struct LoadScreenTheme {
+    pub confirm_block: Style,
+    pub confirm_yes: Style,
+    pub confirm_no: Style,
 }
 
 pub const THEME: Theme = Theme {
     root: Style::new().bg(DARK_BLUE),
     content: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
-    app_title: Style::new()
-        .fg(WHITE)
-        .bg(DARK_BLUE)
-        .add_modifier(Modifier::BOLD),
-    tabs: Style::new().fg(MID_GRAY).bg(DARK_BLUE),
-    tabs_selected: Style::new()
-        .fg(WHITE)
-        .bg(DARK_BLUE)
-        .add_modifier(Modifier::BOLD)
-        .add_modifier(Modifier::REVERSED),
     borders: Style::new().fg(LIGHT_GRAY),
-    description: Style::new().fg(LIGHT_GRAY).bg(DARK_BLUE),
-    description_title: Style::new().fg(LIGHT_GRAY).add_modifier(Modifier::BOLD),
-    logo: Logo {
-        rat_eye: BLACK,
-        rat_eye_alt: RED,
-    },
     key_binding: KeyBinding {
         key: Style::new().fg(BLACK).bg(MID_GRAY),
         description: Style::new().fg(MID_GRAY).bg(BLACK),
     },
     dialouge: Dialogue {
         name: Style::new().fg(WHITE).bg(BLACK),
-        tabs: Style::new().fg(MID_GRAY).bg(DARK_BLUE),
-        tabs_selected: Style::new()
-            .fg(WHITE)
-            .bg(DARK_BLUE)
-            .add_modifier(Modifier::BOLD),
         inbox: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
-        item: Style::new().fg(LIGHT_GRAY),
-        selected_item: Style::new().fg(LIGHT_YELLOW),
-        header: Style::new().add_modifier(Modifier::BOLD),
-        header_value: Style::new().fg(LIGHT_GRAY),
         block: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
         black_edge: Style::new().bg(BLACK).fg(WHITE),
         charpter_subtitle: Style::new().fg(LIGHT_GRAY),
         charpter_title: Style::new().fg(WHITE),
         background: Style::new().bg(BLACK),
     },
-    load: Load {
-        header: Style::new()
-            .bg(DARK_BLUE)
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED),
-        selected: Style::new().fg(LIGHT_YELLOW),
-        ping: Style::new().fg(WHITE),
-        map: Map {
-            style: Style::new().bg(DARK_BLUE),
-            background_color: DARK_BLUE,
-            color: LIGHT_GRAY,
-            path: LIGHT_BLUE,
-            source: LIGHT_GREEN,
-            destination: LIGHT_RED,
-        },
-    },
-    save: Save {
-        ingredients: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
-        ingredients_header: Style::new()
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED),
-    },
     history: History{
         base: Style::new().bg(DARK_BLUE),
         item_border: Style::new().fg(LIGHT_GRAY),
         say_item: Style::new().fg(WHITE),
         text_item: Style::new().fg(LIGHT_GRAY)
-    }
+    },
+    main_menu: MainMenu {
+        item: Style::new().fg(WHITE),
+        disabled_item: Style::new().fg(DARK_GRAY),
+        selected_item: Style::new().fg(LIGHT_YELLOW),
+    },
+    slot_list: SlotList {
+        save: SlotListVariant {
+            slot_id: Style::new().fg(LTY_BLUE),
+            slot_info: Style::new().fg(LTY_BLUE),
+            empty_item: Style::new().fg(DARK_LTY_BLUE),
+            title: Style::new().fg(LTY_BLUE),
+            hint: Style::new().fg(DARK_LTY_BLUE),
+        },
+        load: SlotListVariant {
+            slot_id: Style::new().fg(ORANGE),
+            slot_info: Style::new().fg(ORANGE),
+            empty_item: Style::new().fg(DARK_ORANGE),
+            title: Style::new().fg(ORANGE),
+            hint: Style::new().fg(DARK_ORANGE),
+        },
+        selected_item: Style::new().bg(WHITE).fg(BLACK),
+    },
+    save_screen: SaveScreenTheme {
+        rename_block: Style::new().fg(LTY_BLUE),
+        rename_text: Style::new().fg(WHITE),
+    },
+    load_screen: LoadScreenTheme {
+        confirm_block: Style::new().fg(ORANGE),
+        confirm_yes: Style::new().fg(LIGHT_GREEN),
+        confirm_no: Style::new().fg(DARK_ORANGE),
+    },
 };
 
 pub const DARK_BLUE: Color = Color::Rgb(16, 24, 48);
@@ -149,7 +128,9 @@ pub const LIGHT_BLUE: Color = Color::Rgb(64, 96, 192);
 pub const LIGHT_YELLOW: Color = Color::Rgb(192, 192, 96);
 pub const LIGHT_GREEN: Color = Color::Rgb(64, 192, 96);
 pub const LIGHT_RED: Color = Color::Rgb(192, 96, 96);
-pub const RED: Color = Color::Rgb(215, 0, 0);
+pub const ORANGE: Color = Color::Rgb(255, 165, 64);
+pub const DARK_ORANGE: Color = Color::Rgb(166, 102, 36);
+pub const DARK_LTY_BLUE: Color = Color::Rgb(70, 120, 150);
 pub const BLACK: Color = Color::Rgb(8, 8, 8); // not really black, often #080808
 pub const DARK_GRAY: Color = Color::Rgb(68, 68, 68);
 pub const MID_GRAY: Color = Color::Rgb(128, 128, 128);

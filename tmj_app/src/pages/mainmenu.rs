@@ -6,7 +6,6 @@ use ratatui::crossterm::event::KeyCode;
 use ratatui::widgets::ListState;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Stylize},
     text::{Line, Span},
     widgets::{List, ListItem},
 };
@@ -16,6 +15,7 @@ use tmj_core::event::handler::EventDispatcher;
 
 use crate::art::{self, theme};
 use crate::pages::{SAVE_MANAGER, Screen, UserScreen};
+use crate::SETTING;
 
 #[warn(dead_code)]
 #[derive(Display, EnumString, Debug, PartialEq)]
@@ -38,7 +38,7 @@ pub struct MainScreen {
     frame_count: usize,
 }
 impl Screen for MainScreen {
-    fn active(&mut self, _named_args: &crate::gameflow::NamedArgs) -> anyhow::Result<super::ScreenActRespond> {
+    fn active(&mut self, _named_args: &crate::gameflow::NamedArgs) -> anyhow::Result<super::ScreenActRespond> {
         self.frame_count = 0;
         Ok(super::ScreenActRespond::default())
     }
@@ -63,22 +63,29 @@ impl super::Draw for MainScreen {
             ))));
 
             let item = match selection {
+                MainSelections::Continue => {
+                    if Self::has_temp_save() {
+                        item.style(theme::THEME.main_menu.item)
+                    } else {
+                        item.style(theme::THEME.main_menu.disabled_item)
+                    }
+                }
                 MainSelections::Load => {
                     if SAVE_MANAGER.with(|m| !m.borrow().check_any_save_slot()) {
-                        item.fg(Color::DarkGray)
+                        item.style(theme::THEME.main_menu.disabled_item)
                     } else {
-                        item.fg(Color::White)
+                        item.style(theme::THEME.main_menu.item)
                     }
                 }
                 _ => {
-                    item.fg(Color::White)
+                    item.style(theme::THEME.main_menu.item)
                 }
             };
             menu_items.push(item);
         }
         
         let menu_ls = List::new(menu_items)
-            .highlight_style(Color::Yellow)
+            .highlight_style(theme::THEME.main_menu.selected_item)
             .highlight_symbol(">> ");
         
         frame.render_stateful_widget(menu_ls, list_rect, &mut *self.select_state.borrow_mut());
@@ -86,6 +93,15 @@ impl super::Draw for MainScreen {
 }
 
 impl MainScreen {
+    fn has_temp_save() -> bool {
+        let mut path = match SETTING.abs_save_dir() {
+            std::result::Result::Ok(path) => path,
+            Err(_) => return false,
+        };
+        path.push("temp.save");
+        path.is_file()
+    }
+
     pub fn spawn(_name_args: std::collections::HashMap<&str, &str>) -> Self {
         let mut select_state = ListState::default();
         select_state.select(Some(2));
@@ -129,7 +145,9 @@ impl MainScreen {
                 CmdBuffer::push(GameCmd::GoScene(UserScreen::About.to_string()));
             }
             MainSelections::Continue => {
-                CmdBuffer::push(GameCmd::ContinueGame);
+                if Self::has_temp_save() {
+                    CmdBuffer::push(GameCmd::ContinueGame);
+                }
             }
         }
         Ok(())

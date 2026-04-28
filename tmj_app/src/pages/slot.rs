@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
     crossterm::event::KeyCode,
     layout::Rect,
-    style::{Color, Style, Stylize},
+    style::Stylize,
     text::{Line, Span},
     widgets::{List, ListItem, ListState},
 };
@@ -50,6 +50,13 @@ impl Slot {
 pub struct SlotManager {
     slot_selections: HashMap<u8, Slot>,
     list_state: RefCell<ListState>,
+    draw_mode: SlotDrawMode,
+}
+
+#[derive(Clone, Copy)]
+pub enum SlotDrawMode {
+    Save,
+    Load,
 }
 
 impl EventDispatcher for SlotManager {
@@ -84,7 +91,12 @@ impl SlotManager {
         Ok(Self {
             slot_selections: slot_map,
             list_state: list_state.into(),
+            draw_mode: SlotDrawMode::Save,
         })
+    }
+
+    pub fn set_draw_mode(&mut self, mode: SlotDrawMode) {
+        self.draw_mode = mode;
     }
 
     pub fn check_any_save_slot(&self) -> bool {
@@ -177,6 +189,10 @@ impl SlotManager {
 
 impl super::Draw for SlotManager {
     fn draw(&self, frame: &mut Frame, area: Rect) {
+        let variant = match self.draw_mode {
+            SlotDrawMode::Save => &theme::THEME.slot_list.save,
+            SlotDrawMode::Load => &theme::THEME.slot_list.load,
+        };
         let mut menu_items: Vec<ListItem> = Vec::with_capacity(SLOT_SIZE);
 
         for pos in 0..SLOT_SIZE {
@@ -190,20 +206,22 @@ impl super::Draw for SlotManager {
             let _widget = match slot.path {
                 Some(_) => {
                     let text = Line::from_iter([
-                        Span::from(format!("Slot {:^2} ", slot.id)).bold().fg(theme::LTY_BLUE),
+                        Span::from(format!("Slot {:^2} ", slot.id))
+                            .bold()
+                            .style(variant.slot_id),
                         Span::from(format!(
                             "{:<18} {}",
                             slot.name,
                             slot.time.truncate_to_second()
                         ))
-                        .style(theme::LTY_BLUE),
+                        .style(variant.slot_info),
                     ]);
                     text
                 }
                 None => {
                     let text = Line::from_iter([
                         Span::from(format!("Slot {:^2} ", pos)).bold(),
-                        Span::from(format!("{:<18}", "Empty")).style(Color::Gray),
+                        Span::from(format!("{:<18}", "Empty")).style(variant.empty_item),
                     ]);
                     text
                 }
@@ -213,7 +231,7 @@ impl super::Draw for SlotManager {
 
         let menu_ls = List::new(menu_items)
             .highlight_symbol(">>")
-            .highlight_style(Style::default().bg(Color::White).fg(Color::Black));
+            .highlight_style(theme::THEME.slot_list.selected_item);
 
         frame.render_stateful_widget(menu_ls, area, &mut *self.list_state.borrow_mut());
     }

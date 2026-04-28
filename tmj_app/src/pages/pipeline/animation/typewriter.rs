@@ -49,7 +49,8 @@ impl Animation for AniTypeWriter {
         self.run_time = self.run_time.clamp(Duration::ZERO, self.anim_time());
     }
 
-    fn force_over(&mut self) {
+    fn force_over(&mut self) {
+
         if self.speed <= 0.0 {
             return
         }
@@ -65,12 +66,14 @@ impl Animation for AniTypeWriter {
         self.target_text = "".into();
     }
 
-    fn is_animing(&self) -> bool {
+    fn is_animing(&self) -> bool {
+
         if self.target_text == self.start_text {
             return false;
         }
         let anim = (self.anim_time().as_secs_f64() - self.run_time.as_secs_f64()).abs() > 0.001_f64;
         return anim
-        
+        
+
     }
 }

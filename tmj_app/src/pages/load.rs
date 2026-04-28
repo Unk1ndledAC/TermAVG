@@ -1,9 +1,8 @@
 use crate::pages::Screen;
-use crate::pages::slot::{SAVE_MANAGER, SlotManager};
+use crate::pages::slot::{SAVE_MANAGER, SlotDrawMode, SlotManager};
 use ratatui::Frame;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::layout::Margin;
-use ratatui::style::Color;
 use ratatui::text::Text;
 use ratatui::widgets::{Block, Clear, Paragraph};
 use ratatui::{
@@ -16,6 +15,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use tmj_core::command::{CmdBuffer, GameCmd, SaveSlot};
 use tmj_core::event::handler::EventDispatcher;
+use crate::art::theme;
 
 const SLOT_LIST_MG: usize = 2;
 
@@ -23,7 +23,15 @@ pub struct LoadScreen {
     slot_list: Rc<RefCell<SlotManager>>,
     edit_state: EditState,
 }
-impl Screen for LoadScreen {}
+impl Screen for LoadScreen {
+    fn active(
+        &mut self,
+        _named_args: &crate::gameflow::NamedArgs,
+    ) -> anyhow::Result<super::ScreenActRespond> {
+        self.slot_list.borrow_mut().set_draw_mode(SlotDrawMode::Load);
+        Ok(super::ScreenActRespond::default())
+    }
+}
 
 enum EditState {
     Selecting,
@@ -32,8 +40,9 @@ enum EditState {
 
 impl LoadScreen {
     pub fn spawn(_name_args: HashMap<&str, &str>) -> Self {
+        let slot_list = SAVE_MANAGER.with(|s| s.clone());
         Self {
-            slot_list: SAVE_MANAGER.with(|s| s.clone()),
+            slot_list,
             edit_state: EditState::Selecting,
         }
     }
@@ -103,8 +112,11 @@ impl super::Draw for LoadScreen {
 
         let title_rect = chunks[0];
 
-        let title =
-            Line::from_iter([Span::from("Load").bold(), Span::from("<Enter> to Load")]).centered();
+        let title = Line::from_iter([
+            Span::from("Load").bold().style(theme::THEME.slot_list.load.title),
+            Span::from(" <Enter> to load").style(theme::THEME.slot_list.load.hint),
+        ])
+        .centered();
         frame.render_widget(title, title_rect);
 
         if let EditState::Confiring = self.edit_state {
@@ -118,11 +130,11 @@ impl super::Draw for LoadScreen {
                 .clone();
             let confir_block = Block::bordered()
                 .title_top(format!("load {}", slot_name))
-                .light_blue();
+                .style(theme::THEME.load_screen.confirm_block);
             let name = Text::from(
                 Line::from(vec![
-                    Span::from("<y>: yes ").fg(Color::Green),
-                    Span::from("<n>: no ").fg(Color::DarkGray),
+                    Span::from("<y>: yes ").style(theme::THEME.load_screen.confirm_yes),
+                    Span::from("<n>: no ").style(theme::THEME.load_screen.confirm_no),
                 ])
                 .bold()
                 .centered(),

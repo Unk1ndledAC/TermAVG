@@ -28,6 +28,28 @@ pub struct Game {
 }
 
 impl Game {
+    fn temp_save_path() -> anyhow::Result<PathBuf> {
+        let mut path = SETTING.abs_save_dir()?;
+        path.push("temp.save");
+        Ok(path)
+    }
+
+    fn save_dialogue_to_path(&mut self, target_path: PathBuf) -> anyhow::Result<()> {
+        let screen = match self
+            .game_flow
+            .borrow_mut()
+            .get_scene(&UserScreen::Dialogue.to_string())
+        {
+            Some(_screen) => _screen,
+            None => anyhow::bail!("No Dialouge Screen"),
+        };
+        let mut screen = screen.borrow_mut();
+        let screen = screen.as_screen::<DialogueScene>().unwrap();
+        let save_str = screen.save_to()?;
+        std::fs::write(target_path, save_str)?;
+        Ok(())
+    }
+
     pub fn new() -> Game {
         let mut gameflow = GameFlowMgr::new();
         let _ = gameflow
@@ -100,22 +122,17 @@ impl Game {
         let _ = slot.ensure_slot_path();
         tracing::info!("save slot path {:?}", slot.path);
         if slot.path.is_some() {
-            let screen = match self
-                .game_flow
-                .borrow_mut()
-                .get_scene(&UserScreen::Dialogue.to_string())
-            {
-                Some(_screen) => _screen,
-                None => anyhow::bail!("No Dialouge Screen"),
-            };
-            let mut screen = screen.borrow_mut();
-            let screen = screen.as_screen::<DialogueScene>().unwrap();
-            let save_str = screen.save_to()?;
-            std::fs::write(slot.path.clone().unwrap(), save_str)?;
+            self.save_dialogue_to_path(slot.path.clone().unwrap())?;
         } else {
-            return anyhow::bail!("on_cmd_save save path not exist: {:?}", slot);
+            anyhow::bail!("on_cmd_save save path not exist: {:?}", slot);
         };
         Ok(())
+    }
+
+    fn on_cmd_save_temp(&mut self) -> anyhow::Result<()> {
+        let path = Self::temp_save_path()?;
+        tracing::info!("save temp path {:?}", path);
+        self.save_dialogue_to_path(path)
     }
 
     fn on_cmd_load(&mut self, id: u8) -> anyhow::Result<()> {
@@ -136,6 +153,20 @@ impl Game {
         } else {
             return anyhow::bail!("on_cmd_load path not exist: {:?}", slot);
         };
+        Ok(())
+    }
+
+    fn on_cmd_load_temp(&mut self) -> anyhow::Result<()> {
+        let path = Self::temp_save_path()?;
+        let save_str = std::fs::read_to_string(path)?;
+        let screen = self
+            .game_flow
+            .borrow_mut()
+            .ensure(UserScreen::Dialogue.to_string())?;
+        let mut screen = screen.borrow_mut();
+        let screen = screen.as_screen::<DialogueScene>().unwrap();
+        screen.load_from(save_str)?;
+        CmdBuffer::push(GameCmd::GoScene(UserScreen::Dialogue.to_string()));
         Ok(())
     }
 
@@ -180,17 +211,24 @@ impl Game {
                 EventSender::sender_event(GameEvent::QuitGame)?;
             }
             GameCmd::SaveTo(slot) => match slot {
-                tmj_core::command::SaveSlot::Temp => {}
+                tmj_core::command::SaveSlot::Temp => {
+                    self.on_cmd_save_temp()?;
+                }
                 tmj_core::command::SaveSlot::Slots(id) => {
                     self.on_cmd_save(*id)?;
                 }
             },
             GameCmd::LoadFrom(slot) => match slot {
-                tmj_core::command::SaveSlot::Temp => {}
+                tmj_core::command::SaveSlot::Temp => {
+                    self.on_cmd_load_temp()?;
+                }
                 tmj_core::command::SaveSlot::Slots(id) => {
                     self.on_cmd_load(*id)?;
                 }
             },
+            GameCmd::ContinueGame => {
+                self.on_cmd_load_temp()?;
+            }
             _ => {}
         };
 
