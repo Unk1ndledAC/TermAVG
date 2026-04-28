@@ -6,7 +6,7 @@ use anyhow::Result;
 use ratatui::Frame;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::style::Style;
-use ratatui::widgets::ListState;
+use ratatui::widgets::{Clear, ListState};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     text::{Line, Span},
@@ -66,7 +66,10 @@ pub struct MainScreen {
     frame_count: usize,
 }
 impl Screen for MainScreen {
-    fn active(&mut self, _named_args: &crate::gameflow::NamedArgs) -> anyhow::Result<super::ScreenActRespond> {
+    fn active(
+        &mut self,
+        _named_args: &crate::gameflow::NamedArgs,
+    ) -> anyhow::Result<super::ScreenActRespond> {
         self.frame_count = 0;
         self.bg_img_path = Self::resolve_mainmenu_bg_img();
         Ok(super::ScreenActRespond::default())
@@ -75,7 +78,9 @@ impl Screen for MainScreen {
 
 impl super::Draw for MainScreen {
     fn draw(&self, frame: &mut Frame, area: Rect) {
-        if let Some(path) = &self.bg_img_path && let Ok(bg_img) = Pic::from(path) {
+        if let Some(path) = &self.bg_img_path
+            && let Ok(bg_img) = Pic::from(path)
+        {
             frame.render_widget(bg_img, area);
         }
 
@@ -84,7 +89,10 @@ impl super::Draw for MainScreen {
         let available_w = area.width.saturating_sub(menu_x.saturating_sub(area.x));
         let menu_w = available_w.min(LAYOUT.mainmenu_lw.1).max(1);
         let menu_rect = Rect::new(menu_x, area.y, menu_w, area.height);
-        frame.buffer_mut().set_style(menu_rect, theme::THEME.main_menu.block);
+        frame.render_widget(Clear, menu_rect);
+        frame
+            .buffer_mut()
+            .set_style(menu_rect, theme::THEME.main_menu.block);
 
         let [title_rect, _, list_rect, shortkey_rect] = Layout::default()
             .direction(Direction::Vertical)
@@ -104,7 +112,10 @@ impl super::Draw for MainScreen {
             MAINMENU_TITLE_TEXT.as_deref(),
         );
 
-        let list_rect = list_rect.centered(Constraint::Length(menu_w.saturating_sub(4).max(1)), Constraint::Percentage(100));
+        let list_rect = list_rect.centered(
+            Constraint::Length(menu_w.saturating_sub(4).max(1)),
+            Constraint::Percentage(100),
+        );
 
         let mut menu_items: Vec<ListItem> = Vec::with_capacity(SELECTION_LEN);
         for (_pos, selection) in self.selections.iter().enumerate() {
@@ -128,21 +139,21 @@ impl super::Draw for MainScreen {
                         item.style(theme::THEME.main_menu.item)
                     }
                 }
-                _ => {
-                    item.style(theme::THEME.main_menu.item)
-                }
+                _ => item.style(theme::THEME.main_menu.item),
             };
             menu_items.push(item);
         }
-        
+
         let menu_ls = List::new(menu_items)
             .highlight_style(theme::THEME.main_menu.selected_item)
             .highlight_symbol(">> ");
-        
+
         frame.render_stateful_widget(menu_ls, list_rect, &mut *self.select_state.borrow_mut());
         draw_shortkey_bar(frame, shortkey_rect);
         self.draw_menu_mask_if_pop_visible(frame, menu_rect);
-        self.draw_popitems(frame, area);
+        if self.pop_items.has_visible() {
+            self.draw_popitems(frame, area);
+        }
     }
 }
 
@@ -167,6 +178,8 @@ impl MainScreen {
         };
         let pop_w = configured_pop_w.min(pop_avail_w).max(1);
         let pop_rect = Rect::new(pop_x, area.y, pop_w, area.height);
+
+        frame.render_widget(Clear, pop_rect);
         self.pop_items.draw_visible(frame, pop_rect);
     }
 
@@ -248,9 +261,11 @@ impl MainScreen {
         let session_id = Self::temp_save_session_id();
 
         if let Some(session_id) = session_id {
-            if let Some(map_item) = SETTING.mainmenu_session_bg_map.iter().find(|item| {
-                session_id >= item.session_id_min && session_id <= item.session_id_max
-            }) {
+            if let Some(map_item) = SETTING
+                .mainmenu_session_bg_map
+                .iter()
+                .find(|item| session_id >= item.session_id_min && session_id <= item.session_id_max)
+            {
                 let mapped = pathes::path(&map_item.bg_img);
                 if mapped.is_file() {
                     return Some(mapped);
