@@ -4,7 +4,7 @@ use ratatui::{
     Frame,
     crossterm::event::KeyCode,
     layout::{Constraint, Direction, Layout, Margin, Rect},
-    style::{Style, Stylize},
+    style::Stylize,
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, Paragraph},
 };
@@ -17,10 +17,6 @@ use crate::{
     art::theme,
     pages::{
         Draw,
-        pipeline::{
-            logical_area,
-            visual_element::{VisualElement, VisualElementKind},
-        },
         pop_items::PopItem,
         slot::{SAVE_MANAGER, SlotDrawMode, SlotManager},
     },
@@ -72,7 +68,6 @@ pub struct SavePopItem {
     edit_state: EditState,
     renaming: String,
     shown: bool,
-    dark_ve: VisualElement,
 }
 
 impl SavePopItem {
@@ -83,15 +78,6 @@ impl SavePopItem {
             edit_state: EditState::Selecting,
             renaming: String::new(),
             shown: false,
-            dark_ve: VisualElement {
-                name: "_".into(),
-                alpha: 0.4,
-                style: Style::new().bg(crate::art::theme::BLACK),
-                rect: logical_area(),
-                fill_before_draw: true,
-                kind: VisualElementKind::Text { content: "".into() },
-                ..Default::default()
-            },
         }
     }
 }
@@ -110,7 +96,6 @@ impl PopItem for SavePopItem {
         if !self.shown {
             return Ok(());
         }
-        self.dark_ve.render(frame.buffer_mut(), area);
 
         let panel = area.centered(Constraint::Percentage(86), Constraint::Percentage(86));
         frame.render_widget(Clear, panel);

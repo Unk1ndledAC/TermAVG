@@ -18,10 +18,11 @@ use tracing::info;
 use crate::audio::{AUDIOM, load_audio};
 use crate::pages::pipeline::default_dialogue_ve_stages;
 use crate::pages::pipeline::{
-    DIALOGUE_VE_STAGE_ORDER, RenderVeStage,
+    DIALOGUE_VE_STAGE_ORDER, RenderVeStage, logical_area,
     visual_element::{VisualElement, VisualElementKind},
 };
 use crate::{SETTING, audio};
+use ratatui::style::Style;
 
 use crate::pages::pop_items::PopItem;
 use crate::pages::pop_items::{
@@ -84,6 +85,7 @@ pub struct DialogueScene {
     pub script_behaviours: BehaviourMap,
     visual_elements: RefCell<Vec<VisualElement>>,
     need_rebuild_ve: RefCell<bool>,
+    popitem_dark_ve: VisualElement,
     pop_items: PopItemStore,
     pre_session_ctx_dump: Option<String>,
 }
@@ -186,6 +188,15 @@ impl DialogueScene {
             script_behaviours: behaviours_map,
             visual_elements: RefCell::new(Vec::new()),
             need_rebuild_ve: RefCell::new(true),
+            popitem_dark_ve: VisualElement {
+                name: "_".into(),
+                alpha: 0.4,
+                style: Style::new().bg(crate::art::theme::BLACK),
+                rect: logical_area(),
+                fill_before_draw: true,
+                kind: VisualElementKind::Text { content: "".into() },
+                ..Default::default()
+            },
             pop_items: PopItemStore::default(),
             pre_session_ctx_dump: None,
         };
@@ -294,6 +305,9 @@ impl Draw for DialogueScene {
         };
 
         let _buffer = buffer;
+        if self.pop_items.has_visible() {
+            let _ = self.popitem_dark_ve.render(frame.buffer_mut(), area);
+        }
         self.pop_items.draw_visible(frame, area);
     }
 }

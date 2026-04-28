@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use tmj_core::pathes;
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct Layout {
     pub character_twh: (u16, u16, u16),
     pub frame_face_ltwh: (u16, u16, u16, u16),
@@ -20,6 +21,8 @@ pub struct Layout {
     pub chapter_subtitle_ltwh: (u16, u16, u16, u16),
     pub paragraph_ltwh: (u16, u16, u16, u16),
     pub history_wh: (u16, u16),
+    pub mainmenu_lw: (u16, u16),
+    pub mainmenu_load_pop_lw: (u16, u16),
 }
 
 impl Layout {
@@ -63,6 +66,7 @@ pub static LAYOUT: LazyLock<Layout> = LazyLock::new(|| match read_layout_file() 
 
 impl Default for Layout {
     fn default() -> Self {
+        let mainmenu_lw = (12, 48);
         Self {
             character_twh: (6, 80, 56),
             vertical_dark_edge: 5,
@@ -77,6 +81,10 @@ impl Default for Layout {
             chapter_subtitle_ltwh: (60, 32, 120, 1),
             paragraph_ltwh: (90, 7, 60, 49),
             history_wh: (60, 40),
+            mainmenu_lw,
+            // (left, width). width=0 means use remaining width.
+            // default "adjacent to mainmenu" is encoded here, not computed at draw-time.
+            mainmenu_load_pop_lw: (mainmenu_lw.0 + mainmenu_lw.1, 48),
         }
     }
 }

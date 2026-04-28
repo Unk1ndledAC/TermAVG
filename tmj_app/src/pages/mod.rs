@@ -8,9 +8,7 @@ use tmj_core::event::handler::EventDispatcher;
 
 pub mod about;
 pub mod dialogue;
-pub mod load;
 pub mod mainmenu;
-pub mod save;
 
 pub mod script_def;
 pub mod script_reader;
@@ -80,8 +78,6 @@ pub enum UserScreen {
     Main,
     Dialogue,
     Config,
-    Save,
-    Load,
     About,
     Setting,
     Review,
@@ -101,12 +97,6 @@ impl UserScreen {
             }
             UserScreen::About => {
                 return Ok(Box::new(about::AboutScene::spawn(name_args)));
-            }
-            UserScreen::Save => {
-                return Ok(Box::new(save::SaveScreen::spawn(name_args)));
-            }
-            UserScreen::Load => {
-                return Ok(Box::new(load::LoadScreen::spawn(name_args)));
             }
             _ => anyhow::bail!("no screen"),
         };

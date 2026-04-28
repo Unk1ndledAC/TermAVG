@@ -37,6 +37,7 @@ pub struct History {
 }
 
 pub struct MainMenu {
+    pub block: Style,
     pub item: Style,
     pub disabled_item: Style,
     pub selected_item: Style,
@@ -68,7 +69,7 @@ pub struct LoadScreenTheme {
 }
 
 pub const THEME: Theme = Theme {
-    root: Style::new().bg(DARK_BLUE),
+    root: Style::new().bg(BLACK),
     content: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
     borders: Style::new().fg(LIGHT_GRAY),
     key_binding: KeyBinding {
@@ -91,6 +92,7 @@ pub const THEME: Theme = Theme {
         text_item: Style::new().fg(LIGHT_GRAY)
     },
     main_menu: MainMenu {
+        block: Style::new().bg(DARK_BLUE),
         item: Style::new().fg(WHITE),
         disabled_item: Style::new().fg(DARK_GRAY),
         selected_item: Style::new().fg(LIGHT_YELLOW),

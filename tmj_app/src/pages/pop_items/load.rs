@@ -4,7 +4,7 @@ use ratatui::{
     Frame,
     crossterm::event::KeyCode,
     layout::{Constraint, Direction, Layout, Margin, Rect},
-    style::{Style, Stylize},
+    style::Stylize,
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, Paragraph},
 };
@@ -17,10 +17,6 @@ use crate::{
     art::theme,
     pages::{
         Draw,
-        pipeline::{
-            logical_area,
-            visual_element::{VisualElement, VisualElementKind},
-        },
         pop_items::PopItem,
         slot::{SAVE_MANAGER, SlotDrawMode, SlotManager},
     },
@@ -67,25 +63,25 @@ pub struct LoadPopItem {
     slot_list: Rc<RefCell<SlotManager>>,
     edit_state: EditState,
     shown: bool,
-    dark_ve: VisualElement,
+    main_menu_mode: bool,
 }
 
 impl LoadPopItem {
     pub fn new() -> Self {
+        Self::new_with_mode(false)
+    }
+
+    pub fn new_for_mainmenu() -> Self {
+        Self::new_with_mode(true)
+    }
+
+    fn new_with_mode(main_menu_mode: bool) -> Self {
         let slot_list = SAVE_MANAGER.with(|s| s.clone());
         Self {
             slot_list,
             edit_state: EditState::Selecting,
             shown: false,
-            dark_ve: VisualElement {
-                name: "_".into(),
-                alpha: 0.4,
-                style: Style::new().bg(crate::art::theme::BLACK),
-                rect: logical_area(),
-                fill_before_draw: true,
-                kind: VisualElementKind::Text { content: "".into() },
-                ..Default::default()
-            },
+            main_menu_mode,
         }
     }
 }
@@ -103,39 +99,65 @@ impl PopItem for LoadPopItem {
         if !self.shown {
             return Ok(());
         }
-        self.dark_ve.render(frame.buffer_mut(), area);
 
-        let panel = area.centered(Constraint::Percentage(86), Constraint::Percentage(86));
+        let panel = if self.main_menu_mode {
+            area
+        } else {
+            area.centered(Constraint::Percentage(86), Constraint::Percentage(86))
+        };
         frame.render_widget(Clear, panel);
-        frame.render_widget(
+        let panel_block = if self.main_menu_mode {
+            Block::default().style(theme::THEME.content)
+        } else {
             Block::default()
                 .borders(Borders::ALL)
-                .style(theme::THEME.content),
-            panel,
-        );
+                .style(theme::THEME.content)
+        };
+        frame.render_widget(panel_block, panel);
 
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(2),
-                Constraint::Min(crate::pages::slot::SLOT_SIZE as u16 + 2 * SLOT_LIST_MG as u16 + 1),
-                Constraint::Length(1),
-            ])
-            .split(panel);
+        let list_h = crate::pages::slot::SLOT_SIZE as u16 + 2 * SLOT_LIST_MG as u16 + 1;
+        let chunks = if self.main_menu_mode {
+            // For mainmenu popup, keep list centered and shortcut bar at bottom.
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Fill(1),
+                    Constraint::Length(list_h),
+                    Constraint::Fill(1),
+                    Constraint::Length(1),
+                ])
+                .split(panel)
+        } else {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(2),
+                    Constraint::Min(list_h),
+                    Constraint::Length(1),
+                ])
+                .split(panel)
+        };
+        let (title_rect, list_rect, shortkey_rect) = if self.main_menu_mode {
+            (Rect::default(), chunks[1], chunks[3])
+        } else {
+            (chunks[0], chunks[1], chunks[2])
+        };
 
-        let list_rect = chunks[1]
+        let list_rect = list_rect
             .centered_horizontally(Constraint::Percentage(90))
             .inner(Margin::new(0, SLOT_LIST_MG as u16));
         self.slot_list.borrow_mut().draw(frame, list_rect);
 
-        let title = Line::from_iter([Span::from("Load")
-            .bold()
-            .style(theme::THEME.slot_list.load.title)])
-        .centered();
-        frame.render_widget(title, chunks[0]);
+        if !self.main_menu_mode {
+            let title = Line::from_iter([Span::from("Load")
+                .bold()
+                .style(theme::THEME.slot_list.load.title)])
+            .centered();
+            frame.render_widget(title, title_rect);
+        }
         match self.edit_state {
-            EditState::Selecting => draw_selecting_shortkey_bar(frame, chunks[2]),
-            EditState::Confirming => draw_confirming_shortkey_bar(frame, chunks[2]),
+            EditState::Selecting => draw_selecting_shortkey_bar(frame, shortkey_rect),
+            EditState::Confirming => draw_confirming_shortkey_bar(frame, shortkey_rect),
         }
 
         if let EditState::Confirming = self.edit_state {

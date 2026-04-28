@@ -2,8 +2,7 @@ use std::cell::RefCell;
 
 use ratatui::{
     crossterm::event::KeyCode,
-    layout::{Alignment, Constraint, Layout, Margin},
-    style::Style,
+    layout::{Constraint, Layout, Margin},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, ListState, Padding, Paragraph},
 };
@@ -12,17 +11,12 @@ use tmj_core::event::handler::EventDispatcher;
 use crate::{
     art::theme,
     pages::{
-        pipeline::{
-            logical_area,
-            visual_element::{VisualElement, VisualElementKind},
-        },
         pop_items::{DialogueRecord, HISTORY_LS, PopItem},
     },
 };
 
 pub struct DialogueHistoryLs {
     list_state: RefCell<ListState>,
-    dark_ve: VisualElement,
     shown: bool,
     scroll_offset: usize,
     ls_wh: RefCell<(u16, u16)>,
@@ -33,15 +27,6 @@ impl DialogueHistoryLs {
         DialogueHistoryLs {
             list_state: RefCell::new(ListState::default()),
             shown: false,
-            dark_ve: VisualElement {
-                name: "_".into(),
-                alpha: 0.4,
-                style: Style::new().bg(crate::art::theme::BLACK),
-                rect: logical_area(),
-                fill_before_draw: true,
-                kind: VisualElementKind::Text { content: "".into() },
-                ..Default::default()
-            },
             scroll_offset: 0,
             ls_wh: crate::layout::LAYOUT.history_wh.clone().into(),
         }
@@ -158,7 +143,6 @@ impl PopItem for DialogueHistoryLs {
         if !self.shown {
             return Ok(());
         }
-        self.dark_ve.render(frame.buffer_mut(), rect);
 
         let rect = rect.centered(
             Constraint::Length(crate::LAYOUT.history_wh.0),

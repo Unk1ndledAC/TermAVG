@@ -4,13 +4,24 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tmj_core::pathes;
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct MainMenuSessionBgMapItem {
+    pub session_id_min: usize,
+    pub session_id_max: usize,
+    pub bg_img: PathBuf,
+}
+
 #[derive(Serialize, Deserialize)]
+#[serde(default)]
 pub struct GameSetting {
     pub resolution: (u16, u16),
     pub preprogress_script: Vec<String>, // 需要预处理的脚本路径
     pub is_force_skipable: bool,
     pub save_dir: PathBuf,
     pub entre_script: PathBuf,
+    pub mainmenu_title_file: Option<PathBuf>,
+    pub mainmenu_default_bg_img: PathBuf,
+    pub mainmenu_session_bg_map: Vec<MainMenuSessionBgMapItem>,
     pub default_bg_img: PathBuf,
     pub default_face_img: PathBuf,
     pub max_history_ls: usize,
@@ -67,6 +78,9 @@ impl Default for GameSetting {
             save_dir: "save".into(),
             preprogress_script: Vec::new(),
             entre_script: "resource/script.fs".into(),
+            mainmenu_title_file: None,
+            mainmenu_default_bg_img: "".into(),
+            mainmenu_session_bg_map: Vec::new(),
             default_bg_img: "resource/default_background_img.png".into(),
             default_face_img: "resource/default_face_img.png".into(),
             max_history_ls: 60,

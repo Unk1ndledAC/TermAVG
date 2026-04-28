@@ -1,5 +1,4 @@
 use rand::{Rng, SeedableRng};
-use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Flex, Layout, Rect};
 use ratatui::style::{Color, Style};
@@ -61,19 +60,26 @@ fn drip(frame_count: usize, area: Rect, buf: &mut Buffer) {
 /// draw some text fading in and out from black to red and back
 /// must use RGB Color!!!
 #[expect(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-pub fn text(frame_count: usize, area: Rect, buf: &mut Buffer, target_col: Color) {
+pub fn text(
+    frame_count: usize,
+    area: Rect,
+    buf: &mut Buffer,
+    target_col: Color,
+    logo_text: Option<&str>,
+) {
     let sub_frame = frame_count.saturating_sub(30);
     if sub_frame == 0 {
         return;
     }
 
-    let logo = indoc::indoc! {"
+    let default_logo = indoc::indoc! {"
          ██████   ██████   ██████
            ██    ██ ██ ██    ██ 
            ██    ██ ██ ██    ██ 
            ██    ██ ██ ██    ██ 
            ██    ██ ██ ██  ███
     "};
+    let logo = logo_text.unwrap_or(default_logo);
     let logo_text = Text::styled(logo, Color::Rgb(255, 255, 255));
     let area = centered_rect(area, logo_text.width() as u16, logo_text.height() as u16);
 

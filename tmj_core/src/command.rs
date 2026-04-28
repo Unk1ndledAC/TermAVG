@@ -47,9 +47,6 @@ pub enum GameCmd {
     #[strum(to_string = "LoadFrom {0}")]
     LoadFrom(SaveSlot),
 
-    #[strum(to_string = "Popup {0} at {1}")]
-    Popup(String, ratatui::layout::Rect),
-
     NewGame,
     QuitGame,
     ContinueGame,

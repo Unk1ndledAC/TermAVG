@@ -103,6 +103,7 @@ impl PopItemStore {
         for id in &self.order {
             if let Some(item) = self.items.get(id).filter(|item| item.is_show()) {
                 let _ = item.draw(frame, area);
+                break;
             }
         }
     }
