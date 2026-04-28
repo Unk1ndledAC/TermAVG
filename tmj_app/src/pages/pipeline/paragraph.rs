@@ -51,7 +51,8 @@ impl Behaviour for ParagraphBehaviour {
     fn is_animating(&self) -> bool {
         self.typewriter_ani.is_animing()
     }
-    fn on_scene_active(&mut self, _ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
+    
+    fn sync_from_ctx(&mut self, _ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
         let content = _ctx
             .borrow()
             .get_val(Self::PARAGRAPH_CONTENT)

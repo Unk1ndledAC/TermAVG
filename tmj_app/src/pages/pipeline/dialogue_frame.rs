@@ -83,6 +83,7 @@ impl Behaviour for FrameBehaviour {
 
     fn on_end_dialouge(&mut self) -> anyhow::Result<()> {
         self.face_img = "".into();
+        self.speaker = "".into();
         self.text = "".into();
         self.typewriter.reset();
         Ok(())
@@ -92,6 +93,7 @@ impl Behaviour for FrameBehaviour {
         self.face_img = "".into();
         self.text = "".into();
         self.typewriter.reset();
+        self.speaker = "".into();
         Ok(())
     }
 

@@ -54,7 +54,7 @@ pub trait Behaviour: Any + 'static {
 
     fn on_end_session(&mut self, ctx: ContextRef) -> anyhow::Result<()>;
 
-    fn on_scene_active(&mut self, _ctx: ContextRef) -> anyhow::Result<()> {
+    fn sync_from_ctx(&mut self, _ctx: ContextRef) -> anyhow::Result<()> {
         Ok(())
     }
 

@@ -127,7 +127,7 @@ impl MainScreen {
         let cur_selection = &self.selections[self.select_state.borrow().selected().unwrap()];
         match cur_selection {
             MainSelections::NewGame => {
-                CmdBuffer::push(GameCmd::GoScene(UserScreen::Dialogue.to_string()));
+                CmdBuffer::push(GameCmd::NewGame);
             }
             MainSelections::Load => {
                 CmdBuffer::push(GameCmd::GoScene(UserScreen::Load.to_string()));

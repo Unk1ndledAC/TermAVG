@@ -172,7 +172,10 @@ impl PopItem for DialogueHistoryLs {
 
         frame.render_widget(Clear, rect);
         frame.render_widget(
-            Block::default().style(crate::art::theme::THEME.content),
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" History ")
+                .style(crate::art::theme::THEME.content),
             rect,
         );
 
@@ -190,6 +193,11 @@ impl PopItem for DialogueHistoryLs {
 impl EventDispatcher for DialogueHistoryLs {
     fn on_key(&mut self, key: &ratatui::crossterm::event::KeyEvent) {
         if self.is_hide() {
+            return;
+        }
+
+        if matches!(key.code, KeyCode::Esc | KeyCode::Char('q')) && key.is_release() {
+            self.hide();
             return;
         }
         
@@ -261,9 +269,6 @@ impl EventDispatcher for DialogueHistoryLs {
             // End：跳到最新的消息（偏移为 0）
             KeyCode::End if key.is_release() => {
                 self.scroll_offset = 0;
-            }
-            KeyCode::Esc | KeyCode::Char('q') if key.is_release() => {
-                self.hide();
             }
             _ => {}
         }

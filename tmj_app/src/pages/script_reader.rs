@@ -37,8 +37,8 @@ impl StreamSectionReader {
     }
 
     pub fn read_section(&mut self, n: u64) -> io::Result<SectionReadResult> {
+        const MAX_MARKER_LOOKBACK: usize = 20;
         let start_marker = format!("#{}", n).into_bytes();
-        let end_marker = format!("#{}", n + 1).into_bytes();
 
         let mut start_found = false;
         let mut section_data_offset = 0;
@@ -60,8 +60,18 @@ impl StreamSectionReader {
                 }
             }
 
-            // 如果缓冲区数据不足，继续读取
-            if self.buffer.is_empty() || (!start_found && self.buffer.len() < self.chunk_size) {
+            // 继续读取：
+            // - 未找到起始标记时，按原策略补足缓冲区；
+            // - 找到起始标记后，即使当前缓冲区不小，也要持续读入直到出现结束标记或 EOF。
+            let should_read_more = if self.eof_reached {
+                false
+            } else if start_found {
+                true
+            } else {
+                // 未找到起始 marker 时也必须持续推进读取；否则在某些长度条件下会原地循环。
+                true
+            };
+            if should_read_more {
                 let mut chunk = vec![0u8; self.chunk_size];
                 let bytes_read = self.file.read(&mut chunk)?;
                 if bytes_read == 0 {
@@ -99,9 +109,8 @@ impl StreamSectionReader {
                     }
                     None => {
                         // 没找到起始标记
-                        let max_marker_len = 20;
-                        if self.buffer.len() > self.chunk_size + max_marker_len {
-                            let keep_from = self.buffer.len() - max_marker_len;
+                        if self.buffer.len() > self.chunk_size + MAX_MARKER_LOOKBACK {
+                            let keep_from = self.buffer.len() - MAX_MARKER_LOOKBACK;
                             self.buffer.drain(0..keep_from);
                         }
                         if self.eof_reached {
@@ -117,7 +126,9 @@ impl StreamSectionReader {
 
             // 查找结束标记
             if start_found {
-                match Self::find_marker_boundary(&self.buffer, &end_marker) {
+                // 结束条件：遇到下一个 section marker（不限于 n+1）或 EOF
+                // 从当前 start_marker 之后开始找，避免把起始 marker 本身当成结束 marker。
+                match Self::find_next_section_boundary(&self.buffer, start_marker.len()) {
                     Some(pos) => {
                         // 找到结束标记
                         let content_bytes = &self.buffer[0..pos];
@@ -165,6 +176,35 @@ impl StreamSectionReader {
                 return None;
             }
         }
+    }
+
+    fn find_next_section_boundary(buffer: &[u8], min_pos: usize) -> Option<usize> {
+        if buffer.len() <= min_pos {
+            return None;
+        }
+        for pos in min_pos..buffer.len() {
+            if buffer[pos] != b'#' {
+                continue;
+            }
+            // section marker 必须出现在行首：文件开头或前一个字节是换行
+            if pos > 0 && buffer[pos - 1] != b'\n' && buffer[pos - 1] != b'\r' {
+                continue;
+            }
+            let digit_pos = pos + 1;
+            if digit_pos >= buffer.len() || !buffer[digit_pos].is_ascii_digit() {
+                continue;
+            }
+
+            let mut end = digit_pos + 1;
+            while end < buffer.len() && buffer[end].is_ascii_digit() {
+                end += 1;
+            }
+            // marker 边界：后续不是数字（或到达缓冲区末尾）
+            if end == buffer.len() || !buffer[end].is_ascii_digit() {
+                return Some(pos);
+            }
+        }
+        None
     }
 
     fn find_bytes(haystack: &[u8], start: usize, needle: &[u8]) -> Option<usize> {
@@ -249,6 +289,23 @@ No end marker here.
         // 清理测试文件
         std::fs::remove_file(test_path)?;
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_long_section_crosses_chunk_boundary() -> io::Result<()> {
+        let test_path = "test_sections_long.txt";
+        let long_body = "A".repeat(4096);
+        let content = format!("#1\n{}\n#2\nend", long_body);
+        std::fs::write(test_path, content)?;
+
+        // 刻意使用很小的 chunk，确保 #2 不在首个 chunk 内
+        let mut reader = StreamSectionReader::new(test_path, 64)?;
+        let result = reader.read_section(1)?;
+        assert!(result.content.contains(&long_body));
+        assert!(!result.is_eof);
+
+        std::fs::remove_file(test_path)?;
         Ok(())
     }
 }

@@ -47,6 +47,11 @@ impl HistoryLs {
     pub fn is_empty(&self) -> bool {
         self.records.is_empty()
     }
+
+    /// 清空所有历史记录
+    pub fn clear(&mut self) {
+        self.records.clear();
+    }
 }
 
 /// 全局历史记录（线程安全）

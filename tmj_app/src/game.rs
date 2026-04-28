@@ -2,10 +2,8 @@ use anyhow::{Context, Ok, Result};
 use ratatui::Frame;
 use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::time::Duration;
 use tmj_core::audio::TrackConfig;
-use tmj_core::command::CmdBuffer;
 use tmj_core::pathes;
 use tmj_core::{
     command::GameCmd,
@@ -13,14 +11,13 @@ use tmj_core::{
 };
 use tracing::info;
 
-use crate::pages::mainmenu::MainScreen;
 use crate::{SETTING, utils};
 use crate::art::theme;
 use crate::audio::AUDIOM;
 use crate::audio::Tracks;
 use crate::gameflow::GameFlowMgr;
 use crate::pages::dialogue::DialogueScene;
-use crate::pages::{SAVE_MANAGER, Screen, UserScreen};
+use crate::pages::{SAVE_MANAGER, UserScreen};
 use crate::utils::ConstInfo;
 
 pub struct Game {
@@ -28,6 +25,19 @@ pub struct Game {
 }
 
 impl Game {
+    fn with_dialogue_mut<R>(
+        &mut self,
+        handler: impl FnOnce(&mut DialogueScene) -> anyhow::Result<R>,
+    ) -> anyhow::Result<R> {
+        let screen = self
+            .game_flow
+            .borrow_mut()
+            .ensure(UserScreen::Dialogue.to_string())?;
+        let mut screen = screen.borrow_mut();
+        let dialogue = screen.as_screen::<DialogueScene>().unwrap();
+        handler(dialogue)
+    }
+
     fn temp_save_path() -> anyhow::Result<PathBuf> {
         let mut path = SETTING.abs_save_dir()?;
         path.push("temp.save");
@@ -115,7 +125,7 @@ impl Game {
         }
     }
 
-    fn on_cmd_save(&mut self, id: u8) -> anyhow::Result<()> {
+    fn on_save_slot(&mut self, id: u8) -> anyhow::Result<()> {
         let binding = SAVE_MANAGER.with(|m| m.clone());
         let mut binding = binding.borrow_mut();
         let slot = binding.get_slot(id.into())?;
@@ -124,110 +134,107 @@ impl Game {
         if slot.path.is_some() {
             self.save_dialogue_to_path(slot.path.clone().unwrap())?;
         } else {
-            anyhow::bail!("on_cmd_save save path not exist: {:?}", slot);
+            anyhow::bail!("on_save_slot save path not exist: {:?}", slot);
         };
         Ok(())
     }
 
-    fn on_cmd_save_temp(&mut self) -> anyhow::Result<()> {
+    fn on_save_temp(&mut self) -> anyhow::Result<()> {
         let path = Self::temp_save_path()?;
         tracing::info!("save temp path {:?}", path);
         self.save_dialogue_to_path(path)
     }
 
-    fn on_cmd_load(&mut self, id: u8) -> anyhow::Result<()> {
+    fn on_newgame(&mut self) -> anyhow::Result<()> {
+        self.with_dialogue_mut(|dialogue| dialogue.on_newgame())?;
+        self.go_screen(UserScreen::Dialogue.to_string())?;
+        Ok(())
+    }
+
+    fn on_load(&mut self, save_str: String) -> anyhow::Result<()> {
+        self.with_dialogue_mut(|dialogue| dialogue.on_load(save_str))?;
+        self.go_screen(UserScreen::Dialogue.to_string())?;
+        Ok(())
+    }
+
+    fn on_continue(&mut self) -> anyhow::Result<()> {
+        let path = Self::temp_save_path()?;
+        let save_str = std::fs::read_to_string(path)?;
+        self.with_dialogue_mut(|dialogue| dialogue.on_continue(save_str))?;
+        self.go_screen(UserScreen::Dialogue.to_string())?;
+        Ok(())
+    }
+
+    fn on_load_slot(&mut self, id: u8) -> anyhow::Result<()> {
         let binding = SAVE_MANAGER.with(|m| m.clone());
         let mut binding = binding.borrow_mut();
         let slot = binding.get_slot(id.into())?;
         tracing::info!("load slot path {:?}", slot.path);
         if slot.path.is_some() {
             let save_str = std::fs::read_to_string(slot.path.clone().unwrap())?;
-            let screen = self
-                .game_flow
-                .borrow_mut()
-                .ensure(UserScreen::Dialogue.to_string())?;
-            let mut screen = screen.borrow_mut();
-            let screen = screen.as_screen::<DialogueScene>().unwrap();
-            screen.load_from(save_str)?;
-            CmdBuffer::push(GameCmd::GoScene(UserScreen::Dialogue.to_string()));
+            self.on_load(save_str)?;
         } else {
-            return anyhow::bail!("on_cmd_load path not exist: {:?}", slot);
+            anyhow::bail!("on_load_slot path not exist: {:?}", slot);
         };
         Ok(())
     }
 
-    fn on_cmd_load_temp(&mut self) -> anyhow::Result<()> {
-        let path = Self::temp_save_path()?;
-        let save_str = std::fs::read_to_string(path)?;
-        let screen = self
-            .game_flow
-            .borrow_mut()
-            .ensure(UserScreen::Dialogue.to_string())?;
-        let mut screen = screen.borrow_mut();
-        let screen = screen.as_screen::<DialogueScene>().unwrap();
-        screen.load_from(save_str)?;
-        CmdBuffer::push(GameCmd::GoScene(UserScreen::Dialogue.to_string()));
-        Ok(())
-    }
-
-    fn on_cmd_go_screen(
-        &mut self,
-        name: String,
-    ) -> anyhow::Result<Rc<RefCell<Box<dyn Screen + 'static>>>> {
-        let res = if self.game_flow.borrow_mut().get_scene(&name).is_none() {
-            let ins = self.game_flow.borrow_mut().ensure(name.clone())?;
+    fn go_screen(&mut self, name: String) -> anyhow::Result<()> {
+        if self.game_flow.borrow_mut().get_scene(&name).is_none() {
+            let _ = self.game_flow.borrow_mut().ensure(name.clone())?;
             self.game_flow.borrow_mut().go_screen(&name)?;
-            ins
         } else {
             self.game_flow.borrow_mut().go_screen(&name)?;
-            self.game_flow.borrow_mut().ensure(name.clone())?
-        };
+            let _ = self.game_flow.borrow_mut().ensure(name.clone())?;
+        }
         // attention!: 此处为特殊处理, 一般去往主菜单时脱离游戏环境没有后退需要
         if name == UserScreen::Main.to_string() {
             self.game_flow.borrow_mut().clear_jump_path();
         }
-        Ok(res)
+        Ok(())
     }
 
-    fn on_cmd_go_back_screen(&mut self) -> anyhow::Result<String> {
-        let pre = self
-            .game_flow
+    fn go_back_screen(&mut self) -> anyhow::Result<()> {
+        self.game_flow
             .borrow_mut()
             .go_back_screen()
             .context("Cmd GoBack execute failed!!")?;
-        Ok(pre)
+        Ok(())
     }
 
     pub fn handle_cmd(&mut self, cmd: &GameCmd) -> anyhow::Result<bool> {
         info!("{}", cmd);
         match cmd {
             GameCmd::GoScene(name) => {
-                self.on_cmd_go_screen(name.to_string())?;
+                self.go_screen(name.to_string())?;
             }
             GameCmd::GoBack => {
-                self.on_cmd_go_back_screen()?;
+                self.go_back_screen()?;
             }
             GameCmd::QuitGame => {
                 EventSender::sender_event(GameEvent::QuitGame)?;
             }
             GameCmd::SaveTo(slot) => match slot {
                 tmj_core::command::SaveSlot::Temp => {
-                    self.on_cmd_save_temp()?;
+                    self.on_save_temp()?;
                 }
                 tmj_core::command::SaveSlot::Slots(id) => {
-                    self.on_cmd_save(*id)?;
+                    self.on_save_slot(*id)?;
                 }
             },
             GameCmd::LoadFrom(slot) => match slot {
                 tmj_core::command::SaveSlot::Temp => {
-                    self.on_cmd_load_temp()?;
+                    self.on_continue()?;
                 }
                 tmj_core::command::SaveSlot::Slots(id) => {
-                    self.on_cmd_load(*id)?;
+                    self.on_load_slot(*id)?;
                 }
             },
+            GameCmd::NewGame => {
+                self.on_newgame()?;
+            }
             GameCmd::ContinueGame => {
-                self.on_cmd_load_temp()?;
+                self.on_continue()?;
             }
             _ => {}
         };

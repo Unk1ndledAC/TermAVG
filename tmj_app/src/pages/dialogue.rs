@@ -1,7 +1,7 @@
 use crate::pages::pipeline::BehaviourMap;
 use anyhow::Context;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEventKind};
-use ratatui::layout::{Constraint, Rect};
+use ratatui::layout::Rect;
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -24,7 +24,9 @@ use crate::pages::pipeline::{
 use crate::{SETTING, audio};
 
 use crate::pages::pop_items::PopItem;
-use crate::pages::pop_items::{CmdInputItem, DialogueHistoryLs};
+use crate::pages::pop_items::{
+    CmdInputItem, DialogueHistoryLs, HISTORY_LS, LoadPopItem, PopItemStore, SavePopItem,
+};
 use crate::pages::script_def::var_bgm;
 use crate::pages::script_def::var_env_effect;
 use crate::pages::script_reader::{SectionReadResult, StreamSectionReader};
@@ -82,9 +84,8 @@ pub struct DialogueScene {
     pub script_behaviours: BehaviourMap,
     visual_elements: RefCell<Vec<VisualElement>>,
     need_rebuild_ve: RefCell<bool>,
-    history_ls: Option<DialogueHistoryLs>,
-    cmd_input: Option<CmdInputItem>,
-    pre_session_ctx: Option<SerializableContext>,
+    pop_items: PopItemStore,
+    pre_session_ctx_dump: Option<String>,
 }
 
 impl DialogueScene {
@@ -137,20 +138,13 @@ impl Screen for DialogueScene {
         &mut self,
         _named_args: &crate::gameflow::NamedArgs,
     ) -> anyhow::Result<super::ScreenActRespond> {
-        for behaviour in self.script_behaviours.values_mut().values_mut() {
-            behaviour.on_scene_active(self.interpreter.borrow_mut().context())?;
-        }
         self.init_audio()?;
-        self.apply_current_session()?;
         let resp = ScreenActRespond::default();
         Ok(resp)
     }
 
     fn sleep(&mut self) -> anyhow::Result<super::ScreenActRespond> {
-        // 进入: newgame 或者 continue 或者 load
-        // 后两个都是导入存档文件
         CmdBuffer::push(GameCmd::SaveTo(tmj_core::command::SaveSlot::Temp));
-        self.reset_to_begin()?;
         let resp = ScreenActRespond::default();
         Ok(resp)
     }
@@ -159,7 +153,7 @@ impl Screen for DialogueScene {
 #[derive(Debug, Clone, serde::Serialize, Deserialize)]
 pub struct DialogueSceneSave {
     pub session_id: usize,
-    pub ctx: SerializableContext,
+    pub ctx_dump: String,
 }
 
 impl DialogueScene {
@@ -192,9 +186,8 @@ impl DialogueScene {
             script_behaviours: behaviours_map,
             visual_elements: RefCell::new(Vec::new()),
             need_rebuild_ve: RefCell::new(true),
-            history_ls: None,
-            cmd_input: None,
-            pre_session_ctx: None,
+            pop_items: PopItemStore::default(),
+            pre_session_ctx_dump: None,
         };
         scene
     }
@@ -237,27 +230,50 @@ impl DialogueScene {
     }
 
     pub fn save_to(&self) -> anyhow::Result<String> {
-        let ctx = match &self.pre_session_ctx {
-            Some(ctx) => ctx.clone(),
-            None => {
-                let ctx = self.interpreter.borrow().context();
-                ScriptContext::serialize(&ctx)
-            }
-        };
+        let ctx_dump = self.pre_session_ctx_dump.as_ref().ok_or(anyhow::anyhow!(
+            "save_to failed: pre_session_ctx_dump is None, cannot guarantee session-start snapshot"
+        ))?;
         let save = DialogueSceneSave {
             session_id: self.session_id,
-            ctx,
+            ctx_dump: ctx_dump.clone(),
         };
         let res = json5::to_string(&save).context("save json serialize save failed")?;
         Ok(res)
+    }
+
+    pub fn on_newgame(&mut self) -> anyhow::Result<()> {
+        HISTORY_LS.lock().unwrap().clear();
+        self.reset_to_begin()?;
+        for behaviour in self.script_behaviours.values_mut().values_mut() {
+            behaviour.sync_from_ctx(self.interpreter.borrow().context())?;
+        }
+        self.apply_current_session()?;
+        Ok(())
+    }
+
+    pub fn on_load(&mut self, save_str: String) -> anyhow::Result<()> {
+        HISTORY_LS.lock().unwrap().clear();
+        self.reset_to_begin()?;
+        self.load_from(save_str)?;
+        for behaviour in self.script_behaviours.values_mut().values_mut() {
+            behaviour.sync_from_ctx(self.interpreter.borrow().context())?;
+        }
+        self.apply_current_session()?;
+        Ok(())
+    }
+
+    pub fn on_continue(&mut self, save_str: String) -> anyhow::Result<()> {
+        self.on_load(save_str)
     }
 
     pub fn load_from(&mut self, save_str: String) -> anyhow::Result<()> {
         let save = json5::from_str::<DialogueSceneSave>(&save_str)
             .context("DialougeScene SaveStr Deserialize failed")?;
         self.session_id = save.session_id;
-        let ctx = save.ctx;
-        self.pre_session_ctx = Some(ctx.clone());
+        let ctx_dump = save.ctx_dump;
+        let ctx = json5::from_str::<SerializableContext>(&ctx_dump)
+            .context("load_from parse ctx_dump failed")?;
+        self.pre_session_ctx_dump = Some(ctx_dump);
         ScriptContext::deserialize(&self.interpreter.borrow_mut().context(), ctx)
             .map_err(|e| anyhow::anyhow!(e))?;
         *self.need_rebuild_ve.borrow_mut() = true;
@@ -278,18 +294,7 @@ impl Draw for DialogueScene {
         };
 
         let _buffer = buffer;
-        if self.history_ls.as_ref().is_some_and(|h| h.is_show()) {
-            let _ = self.history_ls.as_ref().unwrap().draw(frame, area);
-        }
-
-        // draw Cmd Input
-        #[cfg(debug_assertions)]
-        if self.cmd_input.is_some() {
-            let _ = self.cmd_input.as_ref().unwrap().draw(
-                frame,
-                area.centered(Constraint::Length(80), Constraint::Length(3)),
-            );
-        }
+        self.pop_items.draw_visible(frame, area);
     }
 }
 
@@ -307,7 +312,7 @@ impl DialogueScene {
     }
 
     fn load_sessions(&mut self) -> anyhow::Result<(Vec<script::Command>, bool)> {
-        tracing::info!("{:?}", SETTING.entre_script);
+        tracing::info!("reading script {:?}", SETTING.entre_script);
         let read_res = self
             .script_reader
             .read_section(self.session_id as u64)
@@ -337,6 +342,12 @@ impl DialogueScene {
 
     fn apply_current_session(&mut self) -> anyhow::Result<bool> {
         self.interpreter.borrow_mut().end_session();
+        let ctx = self.interpreter.borrow().context();
+        self.pre_session_ctx_dump = Some(
+            json5::to_string(&ScriptContext::serialize(&ctx))
+                .context("apply_current_session freeze pre_session_ctx_dump failed")?,
+        );
+
         for b in self.script_behaviours.values_mut().values_mut() {
             let ctx = self.interpreter.borrow().context();
             b.on_end_session(ctx)
@@ -348,8 +359,6 @@ impl DialogueScene {
             .load_sessions()
             .context("apply current session load session failed")?;
 
-        let ctx = self.interpreter.borrow().context();
-        self.pre_session_ctx = Some(ScriptContext::serialize(&ctx));
         self.interpreter.borrow_mut().start_session(session);
 
         if read_to_eof {
@@ -385,23 +394,24 @@ impl DialogueScene {
 
         self.visual_elements.borrow_mut().clear();
         *self.need_rebuild_ve.borrow_mut() = true;
-        self.pre_session_ctx = None;
+        self.pre_session_ctx_dump = None;
 
-        // todo! clear ves, clear interpreter env
+        // newgame/load reset should rebuild script globals from init_env,
+        // otherwise old runtime variables may leak into the next run.
+        self.interpreter.borrow_mut().clear();
+        let ctx = self.interpreter.borrow().context();
+        super::script_def::init_env(ctx.clone(), self.script_behaviours.clone());
+        ctx.borrow_mut()
+            .rebuild_tuid_table_from_live()
+            .map_err(|e| anyhow::anyhow!(e))?;
+
         Ok(())
     }
 }
 
 impl EventDispatcher for DialogueScene {
     fn on_key(&mut self, key: &ratatui::crossterm::event::KeyEvent) {
-        #[cfg(debug_assertions)]
-        if self.cmd_input.is_some() && self.cmd_input.as_ref().unwrap().is_show() {
-            self.cmd_input.as_mut().unwrap().on_key(key);
-            return;
-        }
-
-        if self.history_ls.is_some() && self.history_ls.as_ref().unwrap().is_show() {
-            self.history_ls.as_mut().unwrap().on_key(key);
+        if self.pop_items.dispatch_key_to_top(key) {
             return;
         }
 
@@ -421,12 +431,11 @@ impl EventDispatcher for DialogueScene {
             {
                 #[cfg(debug_assertions)]
                 {
-                    if self.cmd_input.is_none() {
-                        let interpreter: Rc<RefCell<tmj_core::script::Interpreter>> =
-                            self.get_interpreter();
-                        self.cmd_input = Some(CmdInputItem::new(interpreter));
-                    }
-                    self.cmd_input.as_mut().unwrap().show();
+                    let interpreter: Rc<RefCell<tmj_core::script::Interpreter>> =
+                        self.get_interpreter();
+                    self.pop_items
+                        .get_or_insert_with(|| CmdInputItem::new(interpreter))
+                        .show();
                 }
             }
             KeyCode::Esc | KeyCode::Char('q') => {
@@ -434,19 +443,18 @@ impl EventDispatcher for DialogueScene {
                 CmdBuffer::push(GameCmd::GoScene(UserScreen::Main.to_string()));
             }
             KeyCode::Char('s') => {
-                CmdBuffer::push(GameCmd::GoScene(UserScreen::Save.to_string()));
+                self.pop_items.get_or_insert_with(SavePopItem::new).show();
             }
             KeyCode::Char('l') => {
-                CmdBuffer::push(GameCmd::GoScene(UserScreen::Load.to_string()));
+                self.pop_items.get_or_insert_with(LoadPopItem::new).show();
             }
             KeyCode::Char('h') => {
                 self.toggle_dialouge();
             }
             KeyCode::Up => {
-                if self.history_ls.is_none() {
-                    self.history_ls = Some(DialogueHistoryLs::new());
-                }
-                self.history_ls.as_mut().unwrap().show();
+                self.pop_items
+                    .get_or_insert_with(DialogueHistoryLs::new)
+                    .show();
             }
             _ => {}
         }
@@ -457,7 +465,7 @@ impl EventDispatcher for DialogueScene {
     }
 
     fn on_mouse(&mut self, mouse: &ratatui::crossterm::event::MouseEvent) {
-        if self.history_ls.as_ref().is_some_and(|h| h.is_show()) {
+        if self.pop_items.has_visible() {
             return;
         }
         if mouse.kind.is_down() {

@@ -48,6 +48,7 @@ lower_str!(ADD_LAYER);
 lower_str!(DEL_LAYER);
 lower_str!(SEE);
 lower_str!(VOICE);
+lower_str!(LOG);
 
 fn regist_base_gvar(ctx: &mut ScriptContext) -> anyhow::Result<()> {
     VCharacterLs::regist_to_ctx(ctx)?;
@@ -247,6 +248,29 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMa
                     t.queue(AudioOp::play(source, 1.0));
                 }
             });
+            Ok(ScriptValue::Nil)
+        });
+    }
+
+    {
+        ctx.set_global_func(LOG, |c, args| {
+            let path = args
+                .first()
+                .ok_or(anyhow::anyhow!("log requires path argument"))?;
+            let path = path
+                .as_expression()
+                .or_else(|| path.as_str().map(|x| x.to_string()))
+                .ok_or(anyhow::anyhow!(
+                    "log arg should be expression or string path"
+                ))?;
+
+            let value = c
+                .borrow()
+                .resolve_path(&path)
+                .map_err(|e| anyhow::anyhow!(e))?;
+            let message = format!("log {path} => {:?}", value);
+            println!("{message}");
+            tracing::info!("{message}");
             Ok(ScriptValue::Nil)
         });
     }

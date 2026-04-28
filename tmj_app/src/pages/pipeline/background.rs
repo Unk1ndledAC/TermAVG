@@ -64,7 +64,7 @@ impl Behaviour for BackgroundBehaviour {
     fn is_animating(&self) -> bool {
         self.img_trans_ani.is_animing()
     }
-    fn on_scene_active(&mut self, ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
+    fn sync_from_ctx(&mut self, ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
         let mut vars = self.get_bind_vars(&ctx);
         let is_edge = vars
             .pop()
