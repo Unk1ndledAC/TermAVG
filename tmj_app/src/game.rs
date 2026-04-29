@@ -11,7 +11,7 @@ use tmj_core::{
 };
 use tracing::info;
 
-use crate::{SETTING, utils};
+use crate::{GAME_SETTING, SETTING, utils};
 use crate::art::theme;
 use crate::audio::AUDIOM;
 use crate::audio::Tracks;
@@ -99,6 +99,12 @@ impl Game {
                     ..Default::default()
                 },
             );
+        });
+
+        GAME_SETTING.with_borrow(|setting| {
+            if let Err(e) = setting.apply_setting() {
+                tracing::warn!("apply game setting failed: {:?}", e);
+            }
         });
 
         // 将要用的脚本环境常量写入文件

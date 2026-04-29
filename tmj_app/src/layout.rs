@@ -22,7 +22,7 @@ pub struct Layout {
     pub paragraph_ltwh: (u16, u16, u16, u16),
     pub history_wh: (u16, u16),
     pub mainmenu_lw: (u16, u16),
-    pub mainmenu_load_pop_lw: (u16, u16),
+    pub mainmenu_popitem_lw: (u16, u16),
 }
 
 impl Layout {
@@ -84,7 +84,7 @@ impl Default for Layout {
             mainmenu_lw,
             // (left, width). width=0 means use remaining width.
             // default "adjacent to mainmenu" is encoded here, not computed at draw-time.
-            mainmenu_load_pop_lw: (mainmenu_lw.0 + mainmenu_lw.1, 48),
+            mainmenu_popitem_lw: (mainmenu_lw.0 + mainmenu_lw.1, 48),
         }
     }
 }

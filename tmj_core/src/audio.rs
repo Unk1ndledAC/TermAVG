@@ -208,6 +208,14 @@ impl AudioTrack {
         self.waiting = false;
     }
 
+    pub fn set_volume_multiplier(&mut self, volume: f32) {
+        self.volume_multiplier = volume.clamp(0.0, 1.0);
+        for sink in self.sinks.iter_mut().filter(|s| !s.is_dead()) {
+            sink.base_volume = self.config.base_volume * self.volume_multiplier;
+            sink.apply_volume();
+        }
+    }
+
     fn update(&mut self, stream_handle: &OutputStreamHandle, dt: Duration) {
         self.sinks.retain_mut(|sink| sink.update(dt));
 

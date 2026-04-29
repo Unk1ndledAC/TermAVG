@@ -1,6 +1,8 @@
 resolution = [240, 67]
 is_force_skipable = false
 save_dir = "save"
+gallery_dir = "resource/gallery"
+about_file = "resource/about.txt"
 entre_script = "resource/script_example.fss"
 default_bg_img = "resource/bg_0.png"
 default_face_img = "resource/default_face_img.png"

@@ -23,8 +23,10 @@ use crate::pages::pipeline::{
     logical_area,
     visual_element::{VisualElement, VisualElementKind},
 };
-use crate::pages::pop_items::{LoadPopItem, PopItem, PopItemStore};
-use crate::pages::{SAVE_MANAGER, Screen, UserScreen};
+use crate::pages::pop_items::{
+    AboutContentPopItem, GalleryLsPopItem, GameSettingPopItem, LoadPopItem, PopItem, PopItemStore,
+};
+use crate::pages::{SAVE_MANAGER, Screen};
 use crate::{LAYOUT, SETTING};
 
 #[warn(dead_code)]
@@ -78,7 +80,7 @@ impl Screen for MainScreen {
 
 impl super::Draw for MainScreen {
     fn draw(&self, frame: &mut Frame, area: Rect) {
-        if let Some(path) = &self.bg_img_path
+        if let Some(path) = self.current_background_path()
             && let Ok(bg_img) = Pic::from(path)
         {
             frame.render_widget(bg_img, area);
@@ -158,6 +160,17 @@ impl super::Draw for MainScreen {
 }
 
 impl MainScreen {
+    fn current_background_path(&self) -> Option<&PathBuf> {
+        if let Some(gallery) = self.pop_items.get::<GalleryLsPopItem>()
+            && gallery.is_show()
+            && gallery.is_list_mode()
+            && let Some(path) = gallery.selected_image_path()
+        {
+            return Some(path);
+        }
+        self.bg_img_path.as_ref()
+    }
+
     fn draw_menu_mask_if_pop_visible(&self, frame: &mut Frame, menu_rect: Rect) {
         if self.pop_items.has_visible() {
             let _ = self.dark_ve.render(frame.buffer_mut(), menu_rect);
@@ -165,22 +178,7 @@ impl MainScreen {
     }
 
     fn draw_popitems(&self, frame: &mut Frame, area: Rect) {
-        let max_x = area.x.saturating_add(area.width.saturating_sub(1));
-        let pop_x = area
-            .x
-            .saturating_add(LAYOUT.mainmenu_load_pop_lw.0)
-            .min(max_x);
-        let pop_avail_w = area.width.saturating_sub(pop_x.saturating_sub(area.x));
-        let configured_pop_w = if LAYOUT.mainmenu_load_pop_lw.1 == 0 {
-            pop_avail_w
-        } else {
-            LAYOUT.mainmenu_load_pop_lw.1
-        };
-        let pop_w = configured_pop_w.min(pop_avail_w).max(1);
-        let pop_rect = Rect::new(pop_x, area.y, pop_w, area.height);
-
-        frame.render_widget(Clear, pop_rect);
-        self.pop_items.draw_visible(frame, pop_rect);
+        self.pop_items.draw_visible(frame, area);
     }
 
     fn has_temp_save() -> bool {
@@ -293,16 +291,22 @@ impl MainScreen {
                 }
             }
             MainSelections::Gallery => {
-                CmdBuffer::push(GameCmd::GoScene(UserScreen::Gallery.to_string()));
+                self.pop_items
+                    .get_or_insert_with(GalleryLsPopItem::new_for_mainmenu)
+                    .show();
             }
             MainSelections::Setting => {
-                CmdBuffer::push(GameCmd::GoScene(UserScreen::Setting.to_string()));
+                self.pop_items
+                    .get_or_insert_with(GameSettingPopItem::new_for_mainmenu)
+                    .show();
             }
             MainSelections::Exit => {
                 CmdBuffer::push(GameCmd::QuitGame);
             }
             MainSelections::About => {
-                CmdBuffer::push(GameCmd::GoScene(UserScreen::About.to_string()));
+                self.pop_items
+                    .get_or_insert_with(AboutContentPopItem::new)
+                    .show();
             }
             MainSelections::Continue => {
                 if Self::has_temp_save() {

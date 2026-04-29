@@ -101,6 +101,8 @@ resolution = [240, 67]
 preprogress_script = ["resource/script_example.fs"]
 is_force_skipable = false
 save_dir = "save"
+gallery_dir = "resource/gallery"
+about_file = "resource/about.txt" # 可选
 entre_script = "resource/script_example.fss"
 mainmenu_title_file = "resource/mainmenu_title.txt" # 可选
 mainmenu_default_bg_img = "resource/main_menu_bg.png"
@@ -116,6 +118,8 @@ max_history_ls = 60
 - `preprogress_script: []`：需要预处理的脚本列表。启动时会把这些 `*.fs` 转成带段号的 `*.fss`（见下文机制）。
 - `is_force_skipable`：预留字段，当前版本尚未在运行时逻辑中消费。
 - `save_dir`：存档目录（普通槽位与 `temp.save` 都在这里）。
+- `gallery_dir`：图鉴目录路径，用于存放图鉴相关资源。
+- `about_file`：主菜单 About 弹窗内容文件路径（每行作为一段文本居中显示）。
 - `entre_script`：入口脚本路径（通常指向预处理后的 `*.fss`）。
 - `mainmenu_title_file`：主菜单标题文本文件路径（可选，不填则用默认标题效果）。
 - `mainmenu_default_bg_img`：主菜单默认背景图。

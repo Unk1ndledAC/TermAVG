@@ -20,6 +20,7 @@ use crate::{
         pop_items::PopItem,
         slot::{SAVE_MANAGER, SlotDrawMode, SlotManager},
     },
+    LAYOUT,
 };
 
 const SLOT_LIST_MG: usize = 2;
@@ -84,6 +85,19 @@ impl LoadPopItem {
             main_menu_mode,
         }
     }
+
+    fn resolve_mainmenu_panel(area: Rect) -> Rect {
+        let max_x = area.x.saturating_add(area.width.saturating_sub(1));
+        let pop_x = area.x.saturating_add(LAYOUT.mainmenu_popitem_lw.0).min(max_x);
+        let pop_avail_w = area.width.saturating_sub(pop_x.saturating_sub(area.x));
+        let configured_pop_w = if LAYOUT.mainmenu_popitem_lw.1 == 0 {
+            pop_avail_w
+        } else {
+            LAYOUT.mainmenu_popitem_lw.1
+        };
+        let pop_w = configured_pop_w.min(pop_avail_w).max(1);
+        Rect::new(pop_x, area.y, pop_w, area.height)
+    }
 }
 
 impl PopItem for LoadPopItem {
@@ -101,7 +115,7 @@ impl PopItem for LoadPopItem {
         }
 
         let panel = if self.main_menu_mode {
-            area
+            Self::resolve_mainmenu_panel(area)
         } else {
             area.centered(Constraint::Percentage(86), Constraint::Percentage(86))
         };

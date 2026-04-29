@@ -18,6 +18,8 @@ pub struct GameSetting {
     pub preprogress_script: Vec<String>, // 需要预处理的脚本路径
     pub is_force_skipable: bool,
     pub save_dir: PathBuf,
+    pub gallery_dir: PathBuf,
+    pub about_file: Option<PathBuf>,
     pub entre_script: PathBuf,
     pub mainmenu_title_file: Option<PathBuf>,
     pub mainmenu_default_bg_img: PathBuf,
@@ -76,6 +78,8 @@ impl Default for GameSetting {
             resolution: resolution, // 3: 2, 但是注意这里的尺寸也是按照字符宽高比为1:2来计算的
             is_force_skipable: false,
             save_dir: "save".into(),
+            gallery_dir: "resource/gallery".into(),
+            about_file: Some("resource/about.txt".into()),
             preprogress_script: Vec::new(),
             entre_script: "resource/script.fs".into(),
             mainmenu_title_file: None,

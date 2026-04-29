@@ -81,7 +81,6 @@ pub enum UserScreen {
     About,
     Setting,
     Review,
-    Gallery,
 }
 
 impl UserScreen {

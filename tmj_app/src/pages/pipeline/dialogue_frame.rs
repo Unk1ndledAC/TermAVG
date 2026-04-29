@@ -240,6 +240,8 @@ fn draw_shortkey_bar(
         Span::styled(" Save ", desc),
         Span::styled(" l ", key),
         Span::styled(" Load ", desc),
+        Span::styled(" c ", key),
+        Span::styled(" Setting ", desc),
         Span::styled(" h ", key),
         Span::styled(" HideFrame ", desc),
         Span::styled(" Q/Esc ", key),

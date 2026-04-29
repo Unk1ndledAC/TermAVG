@@ -26,7 +26,8 @@ use ratatui::style::Style;
 
 use crate::pages::pop_items::PopItem;
 use crate::pages::pop_items::{
-    CmdInputItem, DialogueHistoryLs, HISTORY_LS, LoadPopItem, PopItemStore, SavePopItem,
+    CmdInputItem, DialogueHistoryLs, GameSettingPopItem, HISTORY_LS, LoadPopItem, PopItemStore,
+    SavePopItem,
 };
 use crate::pages::script_def::var_bgm;
 use crate::pages::script_def::var_env_effect;
@@ -461,6 +462,11 @@ impl EventDispatcher for DialogueScene {
             }
             KeyCode::Char('l') => {
                 self.pop_items.get_or_insert_with(LoadPopItem::new).show();
+            }
+            KeyCode::Char('c') => {
+                self.pop_items
+                    .get_or_insert_with(GameSettingPopItem::new)
+                    .show();
             }
             KeyCode::Char('h') => {
                 self.toggle_dialouge();
