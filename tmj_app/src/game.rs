@@ -11,7 +11,6 @@ use tmj_core::{
 };
 use tracing::info;
 
-use crate::{GAME_SETTING, SETTING, utils};
 use crate::art::theme;
 use crate::audio::AUDIOM;
 use crate::audio::Tracks;
@@ -19,6 +18,7 @@ use crate::gameflow::GameFlowMgr;
 use crate::pages::dialogue::DialogueScene;
 use crate::pages::{SAVE_MANAGER, UserScreen};
 use crate::utils::ConstInfo;
+use crate::{GAME_SETTING, SETTING, utils};
 
 pub struct Game {
     pub game_flow: RefCell<GameFlowMgr>,
@@ -64,11 +64,11 @@ impl Game {
         let mut gameflow = GameFlowMgr::new();
         let _ = gameflow
             .ensure(UserScreen::Main.to_string())
-            .inspect_err(|e| eprintln!("{:?}", e));
+            .inspect_err(|e| tracing::error!("{:?}", e));
 
         let _ = gameflow
             .go_screen(&UserScreen::Main.to_string())
-            .inspect_err(|e| eprintln!("Game Main Sceen Set Failded! Game Init Failed!: {e}"));
+            .inspect_err(|e| tracing::error!("Game Main Sceen Set Failded! Game Init Failed!: {e}"));
 
         // 初始化音频轨道
         AUDIOM.with_borrow_mut(|a| {
@@ -77,7 +77,7 @@ impl Game {
                 Tracks::Bgm.to_string(),
                 TrackConfig {
                     looped: true,
-                    default_fade_duration: Duration::from_millis(800),
+                    default_fade_duration: Duration::from_millis(400),
                     ..Default::default()
                 },
             );
@@ -96,6 +96,15 @@ impl Game {
                 TrackConfig {
                     looped: true,
                     default_fade_duration: Duration::from_millis(200),
+                    ..Default::default()
+                },
+            );
+            a.create_track(
+                Tracks::MainMenuBgm,
+                Tracks::MainMenuBgm.to_string(),
+                TrackConfig {
+                    looped: true,
+                    default_fade_duration: Duration::from_millis(800),
                     ..Default::default()
                 },
             );
@@ -122,7 +131,7 @@ impl Game {
                 .join(PathBuf::from(o_path.file_name().unwrap()).with_extension("fss"));
             match utils::preparse_script(&o_path, &t_path, None) {
                 Err(e) => tracing::error!("{:?}", e),
-                _ => {},
+                _ => {}
             };
         }
 

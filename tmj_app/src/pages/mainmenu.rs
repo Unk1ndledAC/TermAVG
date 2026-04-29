@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ratatui::Frame;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::style::Style;
@@ -16,9 +16,10 @@ use strum_macros::{Display, EnumString};
 use tmj_core::command::{CmdBuffer, GameCmd};
 use tmj_core::event::handler::EventDispatcher;
 use tmj_core::img::shape::Pic;
-use tmj_core::pathes;
+use tmj_core::{audio, pathes};
 
 use crate::art::{self, theme};
+use crate::audio::{AUDIOM, load_audio, load_audio_from_abspath};
 use crate::pages::pipeline::{
     logical_area,
     visual_element::{VisualElement, VisualElementKind},
@@ -65,8 +66,10 @@ pub struct MainScreen {
     pop_items: PopItemStore,
     dark_ve: VisualElement,
     bg_img_path: Option<PathBuf>,
+    bgm_path: Option<PathBuf>,
     frame_count: usize,
 }
+
 impl Screen for MainScreen {
     fn active(
         &mut self,
@@ -74,7 +77,27 @@ impl Screen for MainScreen {
     ) -> anyhow::Result<super::ScreenActRespond> {
         self.frame_count = 0;
         self.bg_img_path = Self::resolve_mainmenu_bg_img();
+        self.bgm_path = Self::resolve_mainmenu_bgm();
+        if self.bgm_path.is_some() {
+            let bgm = load_audio_from_abspath(self.bgm_path.as_ref().unwrap()).context("load main menu bgm feild")?;
+            AUDIOM.with_borrow_mut(move |a| {
+                a.track_mut(&crate::audio::Tracks::MainMenuBgm)
+                    .unwrap()
+                    .queue(audio::AudioOp::play(bgm, 1.0));
+            });
+        }
+
         Ok(super::ScreenActRespond::default())
+    }
+
+    fn sleep(&mut self) -> anyhow::Result<super::ScreenActRespond> {
+        AUDIOM.with_borrow_mut(|a| {
+            a.track_mut(&crate::audio::Tracks::MainMenuBgm)
+                .unwrap()
+                .stop();
+        });
+        let resp = super::ScreenActRespond::default();
+        Ok(resp)
     }
 }
 
@@ -171,6 +194,10 @@ impl MainScreen {
         self.bg_img_path.as_ref()
     }
 
+    fn current_bgm_path(&self) -> Option<&PathBuf> {
+        self.bg_img_path.as_ref()
+    }
+
     fn draw_menu_mask_if_pop_visible(&self, frame: &mut Frame, menu_rect: Rect) {
         if self.pop_items.has_visible() {
             let _ = self.dark_ve.render(frame.buffer_mut(), menu_rect);
@@ -217,6 +244,7 @@ impl MainScreen {
             },
             bg_img_path: None,
             frame_count: 0,
+            bgm_path: None,
         }
     }
 }
@@ -271,6 +299,14 @@ impl MainScreen {
             }
         }
 
+        if default_path.is_file() {
+            return Some(default_path);
+        }
+        None
+    }
+
+    fn resolve_mainmenu_bgm() -> Option<PathBuf> {
+        let default_path = pathes::path(&SETTING.mainmenu_default_bg_img);
         if default_path.is_file() {
             return Some(default_path);
         }

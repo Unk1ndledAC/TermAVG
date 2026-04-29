@@ -32,11 +32,11 @@ impl Default for GameSettingFile {
     }
 }
 
-pub struct GameSetting {
+pub struct UserSetting {
     pub fields: HashMap<String, ScriptValue>,
 }
 
-impl Default for GameSetting {
+impl Default for UserSetting {
     fn default() -> Self {
         let mut fields = HashMap::new();
         fields.insert(BGM_VOLUME.to_string(), ScriptValue::Float(1.0));
@@ -46,7 +46,7 @@ impl Default for GameSetting {
     }
 }
 
-impl From<GameSettingFile> for GameSetting {
+impl From<GameSettingFile> for UserSetting {
     fn from(value: GameSettingFile) -> Self {
         let mut fields = HashMap::new();
         fields.insert(BGM_VOLUME.to_string(), ScriptValue::Float(value.bgm_volume));
@@ -56,8 +56,8 @@ impl From<GameSettingFile> for GameSetting {
     }
 }
 
-impl From<&GameSetting> for GameSettingFile {
-    fn from(value: &GameSetting) -> Self {
+impl From<&UserSetting> for GameSettingFile {
+    fn from(value: &UserSetting) -> Self {
         Self {
             bgm_volume: value
                 .fields
@@ -78,7 +78,7 @@ impl From<&GameSetting> for GameSettingFile {
     }
 }
 
-impl GameSetting {
+impl UserSetting {
     fn setting_file_path() -> std::path::PathBuf {
         pathes::path("game_setting.toml")
     }
@@ -145,24 +145,24 @@ impl GameSetting {
     }
 }
 
-fn read_or_create_setting() -> Result<GameSetting> {
-    let path = GameSetting::setting_file_path();
+fn read_or_create_setting() -> Result<UserSetting> {
+    let path = UserSetting::setting_file_path();
     if fs::exists(&path)? {
         let content = fs::read_to_string(&path).context("game_setting.toml unreadable")?;
         let file_setting = toml::from_str::<GameSettingFile>(&content)?;
         Ok(file_setting.into())
     } else {
-        let setting = GameSetting::default();
+        let setting = UserSetting::default();
         setting.persist()?;
         Ok(setting)
     }
 }
 
 thread_local! {
-    pub static GAME_SETTING: RefCell<GameSetting> = RefCell::new(
+    pub static GAME_SETTING: RefCell<UserSetting> = RefCell::new(
         read_or_create_setting().unwrap_or_else(|e| {
             tracing::error!("load game_setting.toml failed: {:?}", e);
-            GameSetting::default()
+            UserSetting::default()
         })
     );
 }

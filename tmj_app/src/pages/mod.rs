@@ -6,7 +6,6 @@ use std::{
 use strum_macros::{Display, EnumString};
 use tmj_core::event::handler::EventDispatcher;
 
-pub mod about;
 pub mod dialogue;
 pub mod mainmenu;
 
@@ -77,10 +76,6 @@ impl dyn Screen {
 pub enum UserScreen {
     Main,
     Dialogue,
-    Config,
-    About,
-    Setting,
-    Review,
 }
 
 impl UserScreen {
@@ -94,10 +89,6 @@ impl UserScreen {
             UserScreen::Dialogue => {
                 return Ok(Box::new(dialogue::DialogueScene::spawn(name_args)));
             }
-            UserScreen::About => {
-                return Ok(Box::new(about::AboutScene::spawn(name_args)));
-            }
-            _ => anyhow::bail!("no screen"),
         };
     }
 }

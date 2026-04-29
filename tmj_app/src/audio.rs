@@ -1,14 +1,11 @@
-use std::{
-    cell::RefCell,
-    fs::File,
-    io::BufReader,
-};
+use std::{cell::RefCell, fs::File, io::BufReader, path::PathBuf};
 
 use anyhow::Result;
 use strum_macros::Display;
 use tmj_core::{
     audio::{AudioManager, AudioSource},
-    pathes, script::lower_str,
+    pathes,
+    script::lower_str,
 };
 
 #[derive(Clone, Hash, PartialEq, Debug, Display)]
@@ -17,6 +14,7 @@ pub enum Tracks {
     Voice,
     /// 环境音效（与 BGM、语音独立，脚本 `env_effect` 使用）
     EnvEffect,
+    MainMenuBgm,
     Effect,
     Effect1,
     Effect2,
@@ -31,10 +29,15 @@ pub fn load_audio(file: impl ToString) -> Result<AudioSource> {
     Ok(Box::new(source))
 }
 
+pub fn load_audio_from_abspath(path: &PathBuf) -> Result<AudioSource> {
+    let file = File::open(path)?;
+    let source = rodio::Decoder::new(BufReader::new(file))?;
+    Ok(Box::new(source))
+}
+
 thread_local! {
     pub static AUDIOM: RefCell<AudioManager<Tracks>> = RefCell::new(AudioManager::new().unwrap());
 }
-
 
 lower_str!(FADE_IN);
 lower_str!(FADE_OUT);

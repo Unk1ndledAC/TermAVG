@@ -9,4 +9,5 @@ default_face_img = "resource/default_face_img.png"
 preprogress_script = ["resource/script_example.fs"]
 max_history_ls = 60
 mainmenu_default_bg_img = "resource/main_menu_bg.png"
+mainmenu_default_bgm = "resource/A Journey Awaits.ogg"
 mainmenu_session_bg_map = []

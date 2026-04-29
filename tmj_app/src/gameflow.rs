@@ -85,6 +85,7 @@ impl GameFlowMgr {
     }
 
     pub fn go_screen(&mut self, screen_name: &String) -> anyhow::Result<()> {
+        tracing::info!("current scene : {screen_name}");
         self.set_current(screen_name)?;
         self.jump_stack.push(screen_name.clone());
         Ok(())
