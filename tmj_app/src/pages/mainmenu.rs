@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use ratatui::Frame;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::style::Style;
@@ -19,7 +19,7 @@ use tmj_core::img::shape::Pic;
 use tmj_core::{audio, pathes};
 
 use crate::art::{self, theme};
-use crate::audio::{AUDIOM, load_audio, load_audio_from_abspath};
+use crate::audio::{AUDIOM, load_audio_from_abspath};
 use crate::pages::pipeline::{
     logical_area,
     visual_element::{VisualElement, VisualElementKind},
@@ -78,13 +78,19 @@ impl Screen for MainScreen {
         self.frame_count = 0;
         self.bg_img_path = Self::resolve_mainmenu_bg_img();
         self.bgm_path = Self::resolve_mainmenu_bgm();
-        if self.bgm_path.is_some() {
-            let bgm = load_audio_from_abspath(self.bgm_path.as_ref().unwrap()).context("load main menu bgm feild")?;
-            AUDIOM.with_borrow_mut(move |a| {
-                a.track_mut(&crate::audio::Tracks::MainMenuBgm)
-                    .unwrap()
-                    .queue(audio::AudioOp::play(bgm, 1.0));
-            });
+        if let Some(path) = self.current_bgm_path() {
+            match load_audio_from_abspath(path) {
+                Ok(bgm) => {
+                    AUDIOM.with_borrow_mut(move |a| {
+                        a.track_mut(&crate::audio::Tracks::MainMenuBgm)
+                            .unwrap_or_else(|| panic!("MainMenuBgm track not found"))
+                            .queue(audio::AudioOp::play(bgm, 1.0));
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!("load main menu bgm failed {:?}: {:?}", path, e);
+                }
+            }
         }
 
         Ok(super::ScreenActRespond::default())
@@ -195,7 +201,7 @@ impl MainScreen {
     }
 
     fn current_bgm_path(&self) -> Option<&PathBuf> {
-        self.bg_img_path.as_ref()
+        self.bgm_path.as_ref()
     }
 
     fn draw_menu_mask_if_pop_visible(&self, frame: &mut Frame, menu_rect: Rect) {
@@ -306,7 +312,7 @@ impl MainScreen {
     }
 
     fn resolve_mainmenu_bgm() -> Option<PathBuf> {
-        let default_path = pathes::path(&SETTING.mainmenu_default_bg_img);
+        let default_path = pathes::path(&SETTING.mainmenu_default_bgm);
         if default_path.is_file() {
             return Some(default_path);
         }

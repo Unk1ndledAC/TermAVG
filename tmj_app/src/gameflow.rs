@@ -40,15 +40,23 @@ impl GameFlowMgr {
             // 1. 处理screen激活和休眠
             let sleep_res = if !self.cur_scene.is_empty() {
                 let pre_screen = self.ensure(self.cur_scene.clone())?;
-                Some(pre_screen.borrow_mut().sleep()?)
+                Some(
+                    pre_screen
+                        .borrow_mut()
+                        .sleep()
+                        .inspect_err(|e| tracing::error!("sleep screen [{}] failed: {:?}", self.cur_scene, e))?,
+                )
             } else {
                 None
             };
-            let active_res = _screen.borrow_mut().active(
-                self.active_states
-                    .entry(screen_name.clone())
-                    .or_insert(HashMap::new()),
-            )?;
+            let active_res = _screen
+                .borrow_mut()
+                .active(
+                    self.active_states
+                        .entry(screen_name.clone())
+                        .or_insert(HashMap::new()),
+                )
+                .inspect_err(|e| tracing::error!("active screen [{}] failed: {:?}", screen_name, e))?;
             let res_vec = if sleep_res.is_none() {
                 vec![(screen_name.clone(), active_res)]
             } else {

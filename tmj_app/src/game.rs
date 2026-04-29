@@ -61,15 +61,6 @@ impl Game {
     }
 
     pub fn new() -> Game {
-        let mut gameflow = GameFlowMgr::new();
-        let _ = gameflow
-            .ensure(UserScreen::Main.to_string())
-            .inspect_err(|e| tracing::error!("{:?}", e));
-
-        let _ = gameflow
-            .go_screen(&UserScreen::Main.to_string())
-            .inspect_err(|e| tracing::error!("Game Main Sceen Set Failded! Game Init Failed!: {e}"));
-
         // 初始化音频轨道
         AUDIOM.with_borrow_mut(|a| {
             a.create_track(
@@ -115,6 +106,15 @@ impl Game {
                 tracing::warn!("apply game setting failed: {:?}", e);
             }
         });
+
+        let mut gameflow = GameFlowMgr::new();
+        let _ = gameflow
+            .ensure(UserScreen::Main.to_string())
+            .inspect_err(|e| tracing::error!("{:?}", e));
+
+        let _ = gameflow
+            .go_screen(&UserScreen::Main.to_string())
+            .inspect_err(|e| tracing::error!("Game Main Sceen Set Failded! Game Init Failed!: {e}"));
 
         // 将要用的脚本环境常量写入文件
         let consts: Vec<_> = inventory::iter::<ConstInfo>.into_iter().collect();
