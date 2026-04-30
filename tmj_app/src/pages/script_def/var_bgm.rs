@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::Context;
 use tmj_core::{
     audio::AudioOp,
     script::{Interpreter, ScriptValue, TypeName, lower_str},
@@ -16,7 +17,7 @@ lower_str!(SET);
 lower_str!(STOP);
 
 // member
-lower_str!(SOURCE);
+lower_str!(M_SOURCE);
 
 #[derive(TypeName)]
 pub struct VBgm;
@@ -25,21 +26,27 @@ impl BaseVariable for VBgm {
     fn regist_to_ctx_impl(ctx: &mut tmj_core::script::ScriptContext) -> anyhow::Result<()> {
         ctx.set_global_table(BGM);
 
-        let _ = ctx.set_table_member(BGM, SOURCE, ScriptValue::Nil);
+        let _ = ctx.set_table_member(BGM, M_SOURCE, ScriptValue::Nil);
+
+        let _ = ctx.set_table_func(BGM, STOP, |_ctx, _agrs| {
+            AUDIOM.with_borrow_mut(|a| {
+                a.track_mut(&audio::Tracks::Bgm).unwrap().stop();
+            });
+            Ok(ScriptValue::Nil)
+        });
 
         let _ = ctx.set_table_func(BGM, SET, |_ctx, args| {
-            
-            let path = args[0].as_str().expect("!!! bgm error arg type");
+            let path = args[0].as_str().context("!!! bgm error arg type")?;
 
             Interpreter::eval(
                 format!(
-                    "set {BGM}.{SOURCE} \"{}\"",
+                    "set {BGM}.{M_SOURCE} \"{}\"",
                     args.last().unwrap().as_string().unwrap()
                 ),
                 _ctx.clone(),
             )?;
 
-            let source = load_audio(path).expect("!!! bgm load faild");
+            let source = load_audio(path).context("!!! bgm load faild")?;
             let fade_type = args
                 .get(1)
                 .unwrap_or(&ScriptValue::Nil)
@@ -51,9 +58,9 @@ impl BaseVariable for VBgm {
                 match fade_type {
                     audio::FADE_IN => {
                         a.track_mut(&audio::Tracks::Bgm).unwrap().queue_batch(vec![
-                            AudioOp::fade_out(Duration::from_millis(800)),
-                            AudioOp::wait(Duration::from_millis(850)),
-                            AudioOp::fade_in(source, Duration::from_millis(800)),
+                            AudioOp::fade_out(Duration::from_millis(200)),
+                            AudioOp::wait(Duration::from_millis(250)),
+                            AudioOp::fade_in(source, Duration::from_millis(1000)),
                         ]);
                     }
                     audio::TRANSITION => {

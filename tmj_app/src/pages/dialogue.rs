@@ -93,7 +93,7 @@ pub struct DialogueScene {
 
 impl DialogueScene {
     fn init_audio(&self) -> anyhow::Result<()> {
-        let bgm_path = format!("{}.{}", var_bgm::BGM, var_bgm::SOURCE);
+        let bgm_path = format!("{}.{}", var_bgm::BGM, var_bgm::M_SOURCE);
         let bgm_path = self
             .get_interpreter()
             .borrow()

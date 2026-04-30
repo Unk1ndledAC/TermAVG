@@ -38,7 +38,7 @@ impl Animation for AniTypeWriter {
             let target_total_chars = self.target_text.chars().count();
             let start_chars = self.start_text.chars().count();
             let shown_chars = start_chars as f64 + elapsed_secs * self.speed;
-            let shown_chars = shown_chars.floor().clamp(0.0, target_total_chars as f64) as usize;
+            let shown_chars = shown_chars.ceil().clamp(0.0, target_total_chars as f64) as usize;
             *content = self.target_text.chars().take(shown_chars).collect::<String>();
         }
         Ok(())
@@ -46,7 +46,7 @@ impl Animation for AniTypeWriter {
 
     fn update(&mut self, tick_delta: std::time::Duration) {
         self.run_time += tick_delta;
-        self.run_time = self.run_time.clamp(Duration::ZERO, self.anim_time());
+        self.run_time = self.run_time.clamp(Duration::ZERO, self.anim_time() + Duration::from_secs_f32(0.01));
     }
 
     fn force_over(&mut self) {
@@ -56,7 +56,7 @@ impl Animation for AniTypeWriter {
         }
         let diff = self.get_diff_chars_len();
         if diff > 0 {
-            self.run_time = time::Duration::from_secs_f64((diff as f64) / self.speed);
+            self.run_time = time::Duration::from_secs_f64((diff as f64) / self.speed + 0.01);
         }
     }
 
@@ -71,7 +71,7 @@ impl Animation for AniTypeWriter {
         if self.target_text == self.start_text {
             return false;
         }
-        let anim = (self.anim_time().as_secs_f64() - self.run_time.as_secs_f64()).abs() > 0.001_f64;
+        let anim = (self.anim_time().as_secs_f64() - self.run_time.as_secs_f64()) > 0.0001_f64;
         return anim
         
 
