@@ -157,6 +157,8 @@ impl AudioTrack {
 
     fn create_sink(&mut self, stream_handle: &OutputStreamHandle, source: AudioSource) {
         if let Ok(sink) = Sink::try_new(stream_handle) {
+            // Ensure newly appended audio starts silent to avoid first-frame volume jumps.
+            sink.set_volume(0.0);
             if self.config.looped {
                 let source = source.repeat_infinite();
                 sink.append(source);
@@ -340,6 +342,8 @@ impl ManagedSink {
         self.fade_duration = duration;
         self.curve = curve;
         self.is_fading = true;
+        // Apply current volume immediately so the first audible frame is consistent.
+        self.apply_volume();
     }
 
     fn is_dead(&self) -> bool {
