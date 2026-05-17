@@ -8,7 +8,7 @@ use crate::{
     art::theme::THEME,
     pages::{
         dialogue::DialogueScene,
-        pipeline::{
+        behaviour::{
             Behaviour,
             animation::{Animation, typewriter::AniTypeWriter},
             logical_area,

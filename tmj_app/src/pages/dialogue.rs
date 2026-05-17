@@ -1,4 +1,4 @@
-use crate::pages::pipeline::BehaviourMap;
+use crate::pages::behaviour::BehaviourMap;
 use anyhow::Context;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::Rect;
@@ -16,8 +16,8 @@ use tmj_core::{pathes, script};
 use tracing::info;
 
 use crate::audio::{AUDIOM, load_audio};
-use crate::pages::pipeline::default_dialogue_ve_stages;
-use crate::pages::pipeline::{
+use crate::pages::behaviour::default_dialogue_ve_stages;
+use crate::pages::behaviour::{
     DIALOGUE_VE_STAGE_ORDER, RenderVeStage, logical_area,
     visual_element::{VisualElement, VisualElementKind},
 };
@@ -102,7 +102,11 @@ impl DialogueScene {
             .get_val(&bgm_path)
             .unwrap();
 
-        let env_path = format!("{}.{}", var_env_effect::ENV_EFFECT, var_env_effect::SOURCE);
+        let env_path = format!(
+            "{}.{}",
+            var_env_effect::ENV_EFFECT,
+            var_env_effect::M_SOURCE
+        );
         let env_path_val = self
             .get_interpreter()
             .borrow()
@@ -332,7 +336,7 @@ impl DialogueScene {
             .script_reader
             .read_section(self.session_id as u64)
             .unwrap_or_else(|e| {
-                info!("{}", e.to_string());
+                tracing::error!("{}", e.to_string());
                 SectionReadResult {
                     content: "".to_string(),
                     is_eof: true,
@@ -353,6 +357,22 @@ impl DialogueScene {
         }
 
         Ok((session, read_res.is_eof))
+    }
+
+    fn validate_session_exists(&self, target_session_id: usize) -> anyhow::Result<()> {
+        let script_path = SETTING
+            .entre_script_path()
+            .context("validate session failed: get script path failed")?;
+        let mut reader = StreamSectionReader::new(script_path, 1024)
+            .context("validate session failed: create temp reader failed")?;
+        reader.read_section(target_session_id as u64).map_err(|e| {
+            anyhow::anyhow!(
+                "next target session {} not found or unreadable: {}",
+                target_session_id,
+                e
+            )
+        })?;
+        Ok(())
     }
 
     fn apply_current_session(&mut self) -> anyhow::Result<bool> {
@@ -393,8 +413,27 @@ impl DialogueScene {
             }
             return Ok(false);
         }
-        self.session_id += 1;
-        self.apply_current_session()
+
+        let current_session_id = self.session_id;
+        let next_session_target = {
+            let ctx = self.interpreter.borrow().context();
+            ctx.borrow_mut().take_next_session_target()
+        };
+        let is_script_jump = next_session_target.is_some();
+        let target_session_id = next_session_target.unwrap_or(current_session_id + 1);
+
+        if is_script_jump {
+            self.validate_session_exists(target_session_id)?;
+        }
+
+        self.session_id = target_session_id;
+        match self.apply_current_session() {
+            Ok(applied) => Ok(applied),
+            Err(e) => {
+                self.session_id = current_session_id;
+                Err(e)
+            }
+        }
     }
 
     fn reset_to_begin(&mut self) -> anyhow::Result<()> {
@@ -435,11 +474,9 @@ impl EventDispatcher for DialogueScene {
         }
         match key.code {
             KeyCode::Enter | KeyCode::Backspace => {
-                let _ = self.on_try_push_dialouge().or_else(|x| {
-                    info!("On Key next session faild: {}", x);
-                    CmdBuffer::push(GameCmd::GoScene(UserScreen::Main.to_string()));
-                    Err(x)
-                });
+                if let Err(e) = self.on_try_push_dialouge() {
+                    info!("On key next session failed: {}", e);
+                }
             }
             KeyCode::Char('.')
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.is_release() =>

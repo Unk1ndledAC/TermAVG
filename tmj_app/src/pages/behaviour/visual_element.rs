@@ -11,6 +11,7 @@ use tmj_core::{img::shape::Pic, pathes};
 fn _default_no_draw(_: &VisualElement, _: &mut Buffer, _: Rect) -> anyhow::Result<()> {
     Ok(())
 }
+
 pub struct VisualElementCustomDrawer {
     pub draw: Box<dyn Fn(&VisualElement, &mut Buffer, Rect) -> anyhow::Result<()>>,
 }

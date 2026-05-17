@@ -2,7 +2,7 @@ use std::time::{self, Duration};
 
 use tmj_core::script::TypeName;
 
-use crate::pages::pipeline::{animation::Animation, visual_element::VisualElementKind};
+use crate::pages::behaviour::{animation::Animation, visual_element::VisualElementKind};
 
 #[derive(TypeName, Default)]
 pub struct AniTypeWriter {
@@ -31,7 +31,7 @@ impl AniTypeWriter {
 impl Animation for AniTypeWriter {
     fn apply_to_ve(
         &self,
-        ve: &mut crate::pages::pipeline::visual_element::VisualElement,
+        ve: &mut crate::pages::behaviour::visual_element::VisualElement,
     ) -> anyhow::Result<()> {
         if let VisualElementKind::Text { content } = &mut ve.kind {
             let elapsed_secs = self.run_time.as_secs_f64().max(0.0);

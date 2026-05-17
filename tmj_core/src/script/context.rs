@@ -21,6 +21,7 @@ pub struct ScriptContext {
     pub type_registry: TypeRegistry,
     once_stack: Vec<OnceRecord>,
     session_counter: usize,
+    next_session_target: Option<usize>,
     /// 下一个分配的表 id（从 1 起；0 表示非法）
     next_tuid: u64,
     /// 运行时 `tuid` → 表；不参与序列化
@@ -37,6 +38,7 @@ impl ScriptContext {
             type_registry,
             once_stack: Vec::new(),
             session_counter: 0,
+            next_session_target: None,
             next_tuid: 1,
             tuid_table: HashMap::new(),
             context_ref: None,
@@ -506,11 +508,20 @@ impl ScriptContext {
         self.session_counter
     }
 
+    pub fn set_next_session_target(&mut self, target: usize) {
+        self.next_session_target = Some(target);
+    }
+
+    pub fn take_next_session_target(&mut self) -> Option<usize> {
+        self.next_session_target.take()
+    }
+
     pub fn clear(&mut self) {
         info!("Context: clear");
         self.globals.clear();
         self.once_stack.clear();
         self.session_counter = 0;
+        self.next_session_target = None;
         self.tuid_table.clear();
         self.next_tuid = 1;
     }

@@ -1,6 +1,6 @@
 use tmj_core::script::{ScriptValue, TypeName, lower_str};
 
-use crate::pages::{pipeline::{BackgroundBehaviour, with_behaviour_mut_from_ctx}, script_def::BaseVariable};
+use crate::pages::{behaviour::{BackgroundBehaviour, with_behaviour_mut_from_ctx_rc}, script_def::BaseVariable};
 
 lower_str!(BG);
 
@@ -32,7 +32,7 @@ impl BaseVariable for VBg {
                     .map_err(|e| anyhow::anyhow!(e))?;
 
             }
-            with_behaviour_mut_from_ctx::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
+            with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_hide_edge();
             });
 
@@ -47,7 +47,7 @@ impl BaseVariable for VBg {
                     .map_err(|e| anyhow::anyhow!(e))?;
 
             }
-            with_behaviour_mut_from_ctx::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
+            with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_show_edge();
             });
 
@@ -66,7 +66,7 @@ impl BaseVariable for VBg {
 
             }
             let new_img_path = new_img_path.as_string().unwrap().to_string();
-            with_behaviour_mut_from_ctx::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
+            with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_set(new_img_path);
             });
             Ok(ScriptValue::Nil)
@@ -97,7 +97,7 @@ impl BaseVariable for VBg {
                 t.set(M_IMAGE, ScriptValue::String(new_path.clone()), None);
             }
 
-            with_behaviour_mut_from_ctx::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
+            with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_trans_to(new_path, duration_sec);
             });
             Ok(ScriptValue::Nil)

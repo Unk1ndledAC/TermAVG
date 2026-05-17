@@ -189,6 +189,22 @@ impl Parser {
             });
         }
 
+        if path == "next" {
+            let args = self.parse_args()?;
+            if args.is_empty() {
+                return Err("next requires one integer target session id".to_string());
+            }
+            let raw = args[0]
+                .as_int()
+                .ok_or_else(|| "next first argument should be an integer".to_string())?;
+            if raw <= 0 {
+                return Err("next target session id should be >= 1".to_string());
+            }
+            return Ok(Command::Next {
+                target: raw as usize,
+            });
+        }
+
         // 解析参数
         let args = self.parse_args()?;
 

@@ -20,7 +20,7 @@ use tmj_core::{audio, pathes};
 
 use crate::art::{self, theme};
 use crate::audio::{AUDIOM, load_audio_from_abspath};
-use crate::pages::pipeline::{
+use crate::pages::behaviour::{
     logical_area,
     visual_element::{VisualElement, VisualElementKind},
 };

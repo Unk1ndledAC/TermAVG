@@ -1,5 +1,6 @@
 // src/script/value.rs
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use strum::Display;
 use std::{
     any::Any,
     cell::{Ref, RefCell, RefMut},
@@ -14,7 +15,7 @@ use crate::script::{
 };
 
 /// 脚本系统中的核心值类型
-#[derive(Clone)]
+#[derive(Clone, Display)]
 pub enum ScriptValue {
     Nil,
     Bool(bool),
@@ -219,9 +220,9 @@ impl ScriptValue {
             None
         }
     }
-    pub fn as_string(&self) -> Option<&String> {
+    pub fn as_string(&self) -> Option<String> {
         if let ScriptValue::String(v) = self {
-            Some(v)
+            Some(v.clone())
         } else {
             tracing::error!("{:?} is not string", self);
             None

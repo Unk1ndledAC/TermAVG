@@ -10,7 +10,7 @@ use crate::{
     art::theme::THEME,
     layout::Layout,
     pages::{
-        dialogue::DialogueScene, pipeline::{
+        dialogue::DialogueScene, behaviour::{
             Behaviour,
             animation::{self, Animation},
             logical_area,
@@ -48,11 +48,12 @@ impl FrameBehaviour {
     pub const VE_FRAME_SHORTKEY: &'static str = "frame.shortkey";
     pub const VE_FACE: &'static str = "frame.face";
 
-    pub fn export_text(&mut self, text: String) {
+    pub fn export_text(&mut self, text: String, speed: f64, speaker: String) {
         self.face_img = "".into();
         self.text = text.clone();
-        self.speaker = "".into();
+        self.speaker = speaker;
         self.typewriter.reset();
+        self.typewriter.speed = speed;
         self.typewriter.target_text = text;
         self.typewriter.start_text = "".into();
     }

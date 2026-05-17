@@ -17,7 +17,7 @@ pub use slot::SAVE_MANAGER;
 use crate::gameflow::{GameFlowMgr, NamedArgs};
 
 pub mod pop_items;
-pub mod pipeline;
+pub mod behaviour;
 
 pub trait Draw {
     fn draw(&self, frame: &mut ratatui::Frame, area: Rect);

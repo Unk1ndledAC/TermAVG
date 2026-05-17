@@ -6,12 +6,12 @@ use tmj_core::{
     script::{ScriptValue, TabelGet, TypeName},
 };
 
-use crate::pages::pipeline::Behaviour;
+use crate::pages::behaviour::Behaviour;
 use crate::{
     LAYOUT,
     pages::{
         dialogue::DialogueScene,
-        pipeline::{
+        behaviour::{
             logical_area,
             visual_element::{VisualElement, VisualElementKind},
         },

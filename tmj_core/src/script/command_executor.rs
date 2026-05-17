@@ -231,6 +231,11 @@ impl CommandExecutor {
                 }
             }
 
+            Command::Next { target } => {
+                context.borrow_mut().set_next_session_target(*target);
+                ExecuteStatus::Completed
+            }
+
             Command::Chain { commands } => {
                 for cmd in commands {
                     let mut sub_executor = CommandExecutor::new(cmd.clone());

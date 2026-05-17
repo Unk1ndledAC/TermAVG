@@ -8,12 +8,7 @@ lower_str!(FRAME);
 // members
 lower_str!(VISIBLE);
 lower_str!(MODE);
-lower_str!(CONTENT);
 lower_str!(SPEAKER);
-lower_str!(TYPEWRITER_ENABLE);
-lower_str!(TYPEWRITER_SPEED);
-lower_str!(TYPEWRITER_PROGRESS);
-lower_str!(TYPEWRITER_LAST_CONTENT);
 
 // methods
 lower_str!(SHOW);
@@ -28,12 +23,7 @@ impl BaseVariable for VFrame {
         ctx.set_global_table(FRAME);
         let _ = ctx.set_table_member(FRAME, VISIBLE, ScriptValue::bool(true));
         let _ = ctx.set_table_member(FRAME, MODE, ScriptValue::string("normal"));
-        let _ = ctx.set_table_member(FRAME, CONTENT, ScriptValue::string(""));
         let _ = ctx.set_table_member(FRAME, SPEAKER, ScriptValue::string(""));
-        let _ = ctx.set_table_member(FRAME, TYPEWRITER_ENABLE, ScriptValue::bool(true));
-        let _ = ctx.set_table_member(FRAME, TYPEWRITER_SPEED, ScriptValue::float(40.0));
-        let _ = ctx.set_table_member(FRAME, TYPEWRITER_PROGRESS, ScriptValue::float(0.0));
-        let _ = ctx.set_table_member(FRAME, TYPEWRITER_LAST_CONTENT, ScriptValue::string(""));
 
         {
             let _ = ctx

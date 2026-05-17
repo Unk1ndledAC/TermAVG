@@ -5,7 +5,7 @@ use tmj_core::{
     script::{IntoScriptValue, RegistableType, ScriptValue, TabelGet, Table, TypeName, lower_str},
 };
 
-use crate::pages::{pipeline::with_behaviour_mut_from_ctx, pop_items::DialogueRecord};
+use crate::pages::{behaviour::with_behaviour_mut_from_ctx_rc, pop_items::DialogueRecord};
 
 lower_str!(CHARACTER);
 /// 创建新的 Character Table
@@ -126,8 +126,8 @@ impl RegistableType for Character {
                             ScriptValue::String("".into())
                         });
 
-                    let speaker_name = speaker_name.as_string().cloned().unwrap();
-                    let face_path = face_path.as_string().cloned().unwrap();
+                    let speaker_name = speaker_name.as_string().unwrap();
+                    let face_path = face_path.as_string().unwrap();
 
                     crate::pages::pop_items::HISTORY_LS
                         .lock()
@@ -138,8 +138,8 @@ impl RegistableType for Character {
                             content: text.to_string(),
                         });
 
-                    with_behaviour_mut_from_ctx::<
-                        crate::pages::pipeline::dialogue_frame::FrameBehaviour,
+                    with_behaviour_mut_from_ctx_rc::<
+                        crate::pages::behaviour::dialogue_frame::FrameBehaviour,
                         _,
                     >(ctx, |b| {
                         b.export_say(speaker_name, face_path, text.to_string());

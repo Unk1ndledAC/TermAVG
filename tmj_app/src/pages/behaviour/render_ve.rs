@@ -1,7 +1,7 @@
 use ratatui::{buffer::Buffer, layout::Rect};
 use tmj_core::script::TypeName;
 
-use crate::pages::pipeline::visual_element::VisualElement;
+use crate::pages::behaviour::visual_element::VisualElement;
 
 #[derive(TypeName)]
 pub struct RenderVeStage;

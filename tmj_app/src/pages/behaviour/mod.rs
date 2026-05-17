@@ -5,7 +5,8 @@ pub mod visual_element;
 mod behaviour;
 pub use behaviour::Behaviour;
 pub use behaviour::BehaviourMap;
-pub use behaviour::with_behaviour_mut_from_ctx;
+pub use behaviour::with_behaviour_mut_from_ctx_rc;
+pub use behaviour::with_behaviour_mut;
 
 
 pub mod character_ls;

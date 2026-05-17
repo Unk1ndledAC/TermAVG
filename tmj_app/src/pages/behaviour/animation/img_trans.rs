@@ -12,7 +12,7 @@ use crate::{
         halfblock::mix_into_cell,
         theme,
     },
-    pages::pipeline::{animation::Animation, visual_element::VisualElementKind},
+    pages::behaviour::{animation::Animation, visual_element::VisualElementKind},
 };
 
 #[derive(TypeName, Default)]
@@ -48,7 +48,7 @@ impl AniImgTrans {
 impl Animation for AniImgTrans {
     fn apply_to_ve(
         &self,
-        ve: &mut crate::pages::pipeline::visual_element::VisualElement,
+        ve: &mut crate::pages::behaviour::visual_element::VisualElement,
     ) -> anyhow::Result<()> {
         let elapsed_secs = self.run_time.as_secs_f64().max(0.0);
         let total_secs = self.anim_time.as_secs_f64().max(0.0);

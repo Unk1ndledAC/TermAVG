@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use tmj_app::pages::pipeline::{BehaviourMap, default_dialogue_ve_stages};
+use tmj_app::pages::behaviour::{BehaviourMap, default_dialogue_ve_stages};
 use tmj_app::pages::script_def::init_env;
 use tmj_core::script::ScriptContext;
 

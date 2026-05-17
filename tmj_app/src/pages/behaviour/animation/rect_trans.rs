@@ -3,7 +3,7 @@ use std::time::Duration;
 use ratatui::layout::Rect;
 use tmj_core::script::TypeName;
 
-use crate::pages::pipeline::{
+use crate::pages::behaviour::{
     animation::Animation,
     visual_element::VisualElement,
 };

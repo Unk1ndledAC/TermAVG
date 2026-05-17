@@ -174,7 +174,7 @@ max_history_ls = 60
 全局函数（常用）：
 
 - `text(content)`：写入 `frame.content` 并直接驱动 `FrameBehaviour`（旁白模式：无说话人、无头像）。
-- `voice(path)`：播放语音；传空字符串停止语音轨。
+- `voice(path, [seconds], [volume])`：播放语音；`seconds`>0 时先淡出再淡入，`volume` 为 0~1 音源音量系数；传空字符串可停止语音轨（支持淡出）。
 - `add_layer(type, [name], source)`：添加动态图层。
 - `del_layer(name)`：删除动态图层。
 - `see(name)`：打印指定可视元素当前信息（调试）。
@@ -186,8 +186,14 @@ max_history_ls = 60
 
 - `bg.set(path)` / `bg.trans_to(path, duration)` / `bg.show_edge()` / `bg.hide_edge()`
   - `bg.set("")` 支持清空背景图，此时会按主题色稳定填充背景区域。
-- `bgm.set(path, [fade_type])`
-- `env_effect.set(path)`
+- `bgm.set(path, [fade_type], [seconds], [volume])` / `bgm.stop([seconds])`
+  - `fade_type` 可直接用环境里注册的全局字符串（如 `FADE_IN` / `FADE_OUT` / `TRANSITION`）。
+  - 传入 `seconds` 时按秒控制淡入淡出时长（例如：`bgm.set "resource/bgm/abaddons_abyss.ogg" FADE_IN 4`）。
+  - `volume` 为该次 `bgm.set` 音源音量系数（0~1，默认 1），与 track 音量相乘生效。
+  - `bgm.stop 2` 会先淡出约 2 秒后再停止；不传参数时立即停止。
+- `env_effect.set(path, [seconds], [volume])` / `env_effect.stop([seconds])`
+  - `seconds`>0 时先淡出当前环境音后再淡入新环境音。
+  - `volume` 为该次环境音音源音量系数（0~1），与 track 音量相乘生效。
 - `frame.show()` / `frame.hide()` / `frame.set_mode(mode)`
 - `paragraph.show()` / `paragraph.hide()` / `paragraph.print(text)` / `paragraph.new(text)` / `paragraph.clear()`
 - `chapter.show_title(title, [duration])` / `chapter.show_sub_title(subtitle, [duration])`

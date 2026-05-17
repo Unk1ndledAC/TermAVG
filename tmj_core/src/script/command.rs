@@ -48,6 +48,11 @@ pub enum Command {
         path: String,
         args: Vec<ScriptValue>,
     },
+
+    /// 跳转到指定 session（绝对编号）
+    Next {
+        target: usize,
+    },
     
     /// 链式调用：cmd1 -> cmd2 -> cmd3
     /// 链式命令整体是非阻塞的

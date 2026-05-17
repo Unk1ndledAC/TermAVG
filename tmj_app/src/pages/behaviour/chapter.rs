@@ -1,4 +1,3 @@
-use constcat;
 use ratatui::{layout::Alignment, widgets::Wrap};
 use tmj_core::script::{ContextRef, TypeName};
 
@@ -6,13 +5,12 @@ use crate::{
     art::theme::THEME,
     pages::{
         dialogue::DialogueScene,
-        pipeline::{
+        behaviour::{
             Behaviour,
             animation::{Animation, alpha_shift::AniAlpha},
             logical_area,
             visual_element::{VisualElement, VisualElementKind},
         },
-        script_def::env::CHAPTER,
     },
 };
 

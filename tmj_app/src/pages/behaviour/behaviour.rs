@@ -5,7 +5,7 @@ use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc, time::Duration}
 use ratatui::layout::Rect;
 use tmj_core::{
     impl_rust_object,
-    script::{ContextRef, ScriptValue, TypeName},
+    script::{ContextRef, ScriptContext, ScriptValue, TypeName},
 };
 
 use super::visual_element::VisualElement;
@@ -90,8 +90,18 @@ impl BehaviourMap {
 
 impl_rust_object!(BehaviourMap);
 
-pub fn with_behaviour_mut_from_ctx<T, R>(
+pub fn with_behaviour_mut_from_ctx_rc<T, R>(
     ctx: &ContextRef,
+    mutator: impl FnOnce(&mut T) -> R,
+) -> anyhow::Result<R>
+where
+    T: Behaviour + TypeName,
+{
+    with_behaviour_mut::<T, R>(&ctx.borrow(), mutator)
+}
+
+pub fn with_behaviour_mut<T, R>(
+    ctx: &ScriptContext,
     mutator: impl FnOnce(&mut T) -> R,
 ) -> anyhow::Result<R>
 where
@@ -99,7 +109,6 @@ where
 {
     use crate::pages::script_def::env::BEHAVIOURS_MAP;
     let behaviours_val = ctx
-        .borrow()
         .get_global_val(BEHAVIOURS_MAP)
         .ok_or(anyhow::anyhow!(
             "{BEHAVIOURS_MAP} not found in script globals"

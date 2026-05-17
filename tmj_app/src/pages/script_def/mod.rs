@@ -4,6 +4,9 @@ pub use env::init_env;
 pub mod character;
 pub use character::Character;
 
+pub mod layer;
+pub use layer::Layer;
+
 pub mod text_obj;
 pub use text_obj::TextObj;
 use tmj_core::script::{ScriptContext, TypeName};
@@ -17,14 +20,17 @@ pub use var_frame::VFrame;
 pub mod var_paragraph;
 pub use var_paragraph::VParagraph;
 
-pub mod var_layer;
-pub use var_layer::VLayer;
+pub mod var_layer_ls;
+pub use var_layer_ls::VLayerLs;
 
 pub mod var_bgm;
 pub use var_bgm::VBgm;
 
 pub mod var_env_effect;
 pub use var_env_effect::VEnvEffect;
+
+pub mod var_voice;
+pub use var_voice::VVoice;
 
 pub mod var_chapter;
 pub use var_chapter::VChapter;

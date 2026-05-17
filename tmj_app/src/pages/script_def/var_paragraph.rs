@@ -1,7 +1,7 @@
 use tmj_core::script::{ScriptValue, TypeName, lower_str};
 
 use crate::pages::{
-    pipeline::{ParagraphBehaviour, with_behaviour_mut_from_ctx},
+    behaviour::{ParagraphBehaviour, with_behaviour_mut_from_ctx_rc},
     script_def::BaseVariable,
 };
 
@@ -76,7 +76,7 @@ impl BaseVariable for VParagraph {
                         .get(M_CONTENT, None)
                         .and_then(|x| x.as_str().map(|s| s.to_string()))
                         .unwrap_or_default();
-                    with_behaviour_mut_from_ctx::<ParagraphBehaviour, _>(
+                    with_behaviour_mut_from_ctx_rc::<ParagraphBehaviour, _>(
                         ctx,
                         |b: &mut ParagraphBehaviour| {
                             b.export_print(&text.to_string());
@@ -110,7 +110,7 @@ impl BaseVariable for VParagraph {
                         p.set(M_CONTENT, ScriptValue::string(""), None);
                         p.set(M_VISIBLE, ScriptValue::bool(true), None);
                     }
-                    with_behaviour_mut_from_ctx::<ParagraphBehaviour, _>(
+                    with_behaviour_mut_from_ctx_rc::<ParagraphBehaviour, _>(
                         ctx,
                         |b: &mut ParagraphBehaviour| {
                             b.export_new(&text.to_string());
@@ -136,7 +136,7 @@ impl BaseVariable for VParagraph {
                     paragraph
                         .borrow_mut()
                         .set(M_CONTENT, ScriptValue::string(""), None);
-                    with_behaviour_mut_from_ctx::<ParagraphBehaviour, _>(
+                    with_behaviour_mut_from_ctx_rc::<ParagraphBehaviour, _>(
                         ctx,
                         |b: &mut ParagraphBehaviour| {
                             b.export_clear();

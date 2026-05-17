@@ -1,21 +1,19 @@
+use anyhow::Context;
 use tmj_core::{
-    audio::AudioOp,
     pathes,
-    script::{
-        ContextRef, IntoScriptValue, ScriptContext, ScriptValue, lower_str,
-    },
+    script::{ContextRef, IntoScriptValue, ScriptContext, ScriptValue, lower_str},
 };
 
-use crate::audio::{AUDIOM, Tracks, load_audio};
-
-use crate::
+use crate::{
     pages::{
-        pipeline::{FrameBehaviour, with_behaviour_mut_from_ctx},
+        behaviour::{FrameBehaviour, with_behaviour_mut_from_ctx_rc},
         script_def::{
-            BaseVariable, Character, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect, VFrame,
-            VLayer, VParagraph, var_frame, var_layer,
+            BaseVariable, Character, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect,
+            VFrame, VLayerLs, VParagraph, VVoice, var_frame, var_layer_ls,
         },
-    };
+    },
+    utils::script_args::{self, parse_arg, parse_required_arg},
+};
 
 macro_rules! script_str {
     ($ctx:ident, $name:ident) => {
@@ -32,11 +30,11 @@ lower_str!(BGIMG_PATH);
 lower_str!(BEHAVIOURS_MAP);
 pub use super::var_bg::BG;
 pub use super::var_bgm::BGM;
-pub use super::var_env_effect::ENV_EFFECT;
 pub use super::var_chapter::CHAPTER;
 pub use super::var_character_ls::CHARACTER_LS;
+pub use super::var_env_effect::ENV_EFFECT;
 pub use super::var_frame::FRAME;
-pub use super::var_layer::LAYERS;
+pub use super::var_layer_ls::LAYER_LS;
 pub use super::var_paragraph::PARAGRAPH;
 
 // global function
@@ -53,7 +51,7 @@ fn regist_base_gvar(ctx: &mut ScriptContext) -> anyhow::Result<()> {
     VCharacterLs::regist_to_ctx(ctx)?;
     VFrame::regist_to_ctx(ctx)?;
     VParagraph::regist_to_ctx(ctx)?;
-    VLayer::regist_to_ctx(ctx)?;
+    VLayerLs::regist_to_ctx(ctx)?;
     VBgm::regist_to_ctx(ctx)?;
     VEnvEffect::regist_to_ctx(ctx)?;
     VChapter::regist_to_ctx(ctx)?;
@@ -61,7 +59,7 @@ fn regist_base_gvar(ctx: &mut ScriptContext) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMap) {
+pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourMap) {
     {
         ctx.borrow_mut()
             .set_global_val(DISPLAY_NAME, ScriptValue::string(""));
@@ -96,98 +94,21 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMa
     }
 
     {
-        ctx.set_global_func(ADD_LAYER, |c, args| {
-            if args.len() < 2 {
-                anyhow::bail!("add_layer requires at least type and source/name");
-            }
-
-            let layer_type = args[0]
-                .as_str()
-                .ok_or(anyhow::anyhow!(
-                    "add_layer arg0 should be layer type string"
-                ))?
-                .to_string();
-
-            let (name, source) = if args.len() >= 3 {
-                let name = args[1]
-                    .as_str()
-                    .ok_or(anyhow::anyhow!(
-                        "add_layer arg1 should be layer name string"
-                    ))?
-                    .to_string();
-                let source = args[2]
-                    .as_str()
-                    .ok_or(anyhow::anyhow!("add_layer arg2 should be source string"))?
-                    .to_string();
-                (name, source)
-            } else {
-                let source = args[1]
-                    .as_str()
-                    .ok_or(anyhow::anyhow!("add_layer arg1 should be source string"))?
-                    .to_string();
-                let name = std::path::Path::new(&source)
-                    .file_stem()
-                    .and_then(|x| x.to_str())
-                    .unwrap_or("layer")
-                    .to_string();
-                (name, source)
-            };
-
-            let layers = c
-                .borrow()
-                .get_global_val(LAYERS)
-                .ok_or(anyhow::anyhow!("layers not found"))?
-                .as_table_or_resolve(c)
-                .ok_or(anyhow::anyhow!("layers should be table"))?;
-
-            let layer_rc = c.borrow_mut().alloc_table_rc();
-            {
-                let mut layer_item = layer_rc.borrow_mut();
-                layer_item.set(var_layer::LAYER_TYPE, ScriptValue::string(layer_type), None);
-                layer_item.set(var_layer::SOURCE, ScriptValue::string(source), None);
-                layer_item.set(var_layer::VISIBLE, ScriptValue::bool(true), None);
-            }
-            layers.borrow_mut().set(
-                name,
-                ScriptValue::Table(layer_rc),
-                Some(c),
-            );
-
-            Ok(ScriptValue::Table(layers))
-        });
-    }
-
-    {
-        ctx.set_global_func(DEL_LAYER, |c, args| {
-            let name = args
-                .first()
-                .and_then(|x| x.as_str())
-                .ok_or(anyhow::anyhow!("del_layer requires name string"))?;
-            let layers = c
-                .borrow()
-                .get_global_val(LAYERS)
-                .ok_or(anyhow::anyhow!("layers not found"))?
-                .as_table_or_resolve(c)
-                .ok_or(anyhow::anyhow!("layers should be table"))?;
-            layers.borrow_mut().remove(name);
-            Ok(ScriptValue::Table(layers))
-        });
-    }
-
-    {
         ctx.set_global_func(TEXT, |c, args| {
-            let raw_text = args
-                .first()
-                .and_then(|x| x.as_str())
-                .ok_or(anyhow::anyhow!("text requires content string"))?;
-            {
-                // Keep script table in sync for debugging/introspection.
-                c.borrow_mut()
-                    .set_table_member(FRAME, var_frame::CONTENT, ScriptValue::string(raw_text))
-                    .map_err(|e| anyhow::anyhow!(e))?;
+            let raw_text = parse_required_arg(&args, 0, &ScriptValue::as_string)
+                .context("text requires content string")?;
+            let mut speed = parse_arg(&args, 1, -1.0, &ScriptValue::to_number);
+            let speaker = parse_arg(&args, 1, "".to_string(), &ScriptValue::as_string);
+            // 第二参数可以是speak 或者speed, 如同时需要,speed 放第三位
+            if speed < 0_f64 {
+                if !speaker.is_empty() {
+                    speed = parse_arg(&args, 2, 30.0, &ScriptValue::to_number);
+                } else {
+                    speed = 30.0;
+                }
             }
-            with_behaviour_mut_from_ctx::<FrameBehaviour, _>(c, |b| {
-                b.export_text(raw_text.to_string());
+            with_behaviour_mut_from_ctx_rc::<FrameBehaviour, _>(c, |b| {
+                b.export_text(raw_text, speed, speaker);
             })?;
 
             Ok(ScriptValue::Nil)
@@ -218,26 +139,11 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMa
 
     {
         ctx.set_global_func(VOICE, |_ctx, args| {
-            let path = args
-                .first()
-                .and_then(|x| x.as_str())
-                .ok_or(anyhow::anyhow!("voice requires audio file path string"))?;
-            if path.is_empty() {
-                AUDIOM.with_borrow_mut(|a| {
-                    if let Some(t) = a.track_mut(&Tracks::Voice) {
-                        t.stop();
-                    }
-                });
-                return Ok(ScriptValue::Nil);
-            }
-            let source =
-                load_audio(path).map_err(|e| anyhow::anyhow!("voice: failed to load audio: {e}"))?;
-            AUDIOM.with_borrow_mut(|a| {
-                if let Some(t) = a.track_mut(&Tracks::Voice) {
-                    t.stop();
-                    t.queue(AudioOp::play(source, 1.0));
-                }
-            });
+            let path = script_args::parse_required_arg(&args, 0, ScriptValue::as_string)
+                .context("voice requires audio file path string")?;
+            let fade_duration = script_args::parse_duration(&args, 1, 0.0);
+            let source_volume = script_args::parse_volume(&args, 2, 1.0);
+            VVoice::set(&path, fade_duration, source_volume)?;
             Ok(ScriptValue::Nil)
         });
     }
@@ -264,5 +170,4 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::pipeline::BehaviourMa
             Ok(ScriptValue::Nil)
         });
     }
-
 }

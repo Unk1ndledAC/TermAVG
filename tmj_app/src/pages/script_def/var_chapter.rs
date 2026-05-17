@@ -3,7 +3,7 @@ use std::time::Duration;
 use tmj_core::script::{ScriptValue, TypeName, lower_str};
 
 use crate::pages::{
-    pipeline::{ChapterBehaviour, with_behaviour_mut_from_ctx},
+    behaviour::{ChapterBehaviour, with_behaviour_mut_from_ctx_rc},
     script_def::BaseVariable,
 };
 
@@ -35,7 +35,7 @@ impl BaseVariable for VChapter {
                         .filter(|d| d.is_finite() && *d >= 0.0)
                         .unwrap_or(1.0);
 
-                    with_behaviour_mut_from_ctx::<ChapterBehaviour, _>(ctx, |b| {
+                    with_behaviour_mut_from_ctx_rc::<ChapterBehaviour, _>(ctx, |b| {
                         b.export_show_title(Duration::from_secs_f64(duration), title.to_string());
                     })?;
 
@@ -65,7 +65,7 @@ impl BaseVariable for VChapter {
                         .filter(|d| d.is_finite() && *d >= 0.0)
                         .unwrap_or(1.0);
 
-                    with_behaviour_mut_from_ctx::<ChapterBehaviour, _>(ctx, |b| {
+                    with_behaviour_mut_from_ctx_rc::<ChapterBehaviour, _>(ctx, |b| {
                         b.export_show_sub_title(
                             Duration::from_secs_f64(duration),
                             subtitle.to_string(),

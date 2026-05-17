@@ -14,7 +14,7 @@ use crate::{
     art::theme::THEME,
     pages::{
         dialogue::DialogueScene,
-        pipeline::{
+        behaviour::{
             Behaviour,
             animation::{Animation, img_trans::AniImgTrans},
             logical_area,
@@ -74,7 +74,7 @@ impl Behaviour for BackgroundBehaviour {
         let img_path = vars
             .pop()
             .transpose()?
-            .and_then(|v| v.as_string().cloned())
+            .and_then(|v| v.as_string())
             .ok_or_else(|| anyhow::anyhow!("{}.{} missing or not string", BG, Self::BG_IMAGE))?;
         self.is_edge = is_edge;
         self.img_trans_ani.reset();
