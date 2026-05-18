@@ -1,20 +1,18 @@
-use tmj_core::script::{ScriptValue, TypeName, lower_str};
+use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
 use crate::pages::{
     behaviour::{ParagraphBehaviour, with_behaviour_mut_from_ctx_rc},
     script_def::BaseVariable,
 };
 
-lower_str!(PARAGRAPH);
-lower_str!(M_VISIBLE);
-lower_str!(M_CONTENT);
-
-// methods
-lower_str!(SHOW);
-lower_str!(PRINT);
-lower_str!(NEW);
-lower_str!(HIDE);
-lower_str!(CLEAR);
+script_sym!(PARAGRAPH, Type, "旁白/段落全局对象");
+script_sym!(M_VISIBLE, Member, "段落框是否可见");
+script_sym!(M_CONTENT, Member, "段落文本内容");
+script_sym!(SHOW, Function, "显示段落框");
+script_sym!(PRINT, Function, "追加打印文本");
+script_sym!(NEW, Function, "新页并设置文本");
+script_sym!(HIDE, Function, "隐藏段落框");
+script_sym!(CLEAR, Function, "清空段落内容");
 
 #[derive(TypeName)]
 pub struct VParagraph;

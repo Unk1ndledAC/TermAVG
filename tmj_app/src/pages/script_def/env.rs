@@ -1,15 +1,14 @@
 use anyhow::Context;
 use tmj_core::{
     pathes,
-    script::{ContextRef, IntoScriptValue, ScriptContext, ScriptValue, lower_str},
+    script::{ContextRef, IntoScriptValue, ScriptContext, ScriptValue, script_sym},
 };
 
 use crate::{
     pages::{
         behaviour::{FrameBehaviour, with_behaviour_mut_from_ctx_rc},
         script_def::{
-            BaseVariable, Character, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect,
-            VFrame, VLayerLs, VParagraph, VVoice, var_frame, var_layer_ls,
+            BaseVariable, Character, Layer, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect, VFrame, VLayerLs, VParagraph, VVoice, var_frame, var_layer_ls
         },
     },
     utils::script_args::{self, parse_arg, parse_required_arg},
@@ -25,9 +24,8 @@ macro_rules! script_str {
     };
 }
 
-// global member
-lower_str!(BGIMG_PATH);
-lower_str!(BEHAVIOURS_MAP);
+script_sym!(BGIMG_PATH, Member, "默认背景图路径（全局字符串）");
+script_sym!(BEHAVIOURS_MAP, Member, "对话场景 Behaviour 映射表");
 pub use super::var_bg::BG;
 pub use super::var_bgm::BGM;
 pub use super::var_chapter::CHAPTER;
@@ -37,15 +35,14 @@ pub use super::var_frame::FRAME;
 pub use super::var_layer_ls::LAYER_LS;
 pub use super::var_paragraph::PARAGRAPH;
 
-// global function
-lower_str!(TEXT);
-lower_str!(DISPLAY_NAME);
-lower_str!(SAVE_TO);
-lower_str!(ADD_LAYER);
-lower_str!(DEL_LAYER);
-lower_str!(SEE);
-lower_str!(VOICE);
-lower_str!(LOG);
+script_sym!(TEXT, Function, "在对话框显示文本");
+script_sym!(DISPLAY_NAME, Function, "显示名称标签");
+script_sym!(SAVE_TO, Function, "保存游戏到槽位");
+script_sym!(ADD_LAYER, Function, "向 layer_ls 添加图层");
+script_sym!(DEL_LAYER, Function, "从 layer_ls 移除图层");
+script_sym!(SEE, Function, "注视/看向效果");
+script_sym!(VOICE, Function, "播放语音");
+script_sym!(LOG, Function, "写入日志");
 
 fn regist_base_gvar(ctx: &mut ScriptContext) -> anyhow::Result<()> {
     VCharacterLs::regist_to_ctx(ctx)?;
@@ -75,6 +72,7 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
     }
     {
         ctx.type_registry.register::<Character>();
+        ctx.type_registry.register::<Layer>();
         ctx.type_registry.register::<TextObj>();
     }
     let _ = regist_base_gvar(&mut ctx);

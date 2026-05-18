@@ -1,18 +1,15 @@
 use std::time::Duration;
 
-use tmj_core::script::{ScriptValue, TypeName, lower_str};
+use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
 use crate::pages::{
     behaviour::{ChapterBehaviour, with_behaviour_mut_from_ctx_rc},
     script_def::BaseVariable,
 };
 
-// name
-lower_str!(CHAPTER);
-
-//method
-lower_str!(SHOW_TITLE);
-lower_str!(SHOW_SUB_TITLE);
+script_sym!(CHAPTER, Type, "章节标题全局对象");
+script_sym!(SHOW_TITLE, Function, "显示章节主标题");
+script_sym!(SHOW_SUB_TITLE, Function, "显示章节副标题");
 
 #[derive(TypeName)]
 pub struct VChapter;

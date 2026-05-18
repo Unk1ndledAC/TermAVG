@@ -1,4 +1,4 @@
-use tmj_core::script::{ScriptValue, TypeName, lower_str};
+use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
 use crate::pages::{
     script_def::{BaseVariable, Character},
@@ -7,11 +7,8 @@ use crate::pages::{
 #[derive(TypeName)]
 pub struct VCharacterLs;
 
-// var name
-lower_str!(CHARACTER_LS);
-
-// funcs
-lower_str!(SET_CHARACTERS);
+script_sym!(CHARACTER_LS, Type, "场上角色列表全局对象");
+script_sym!(SET_CHARACTERS, Function, "设置当前出场的角色表");
 
 impl BaseVariable for VCharacterLs {
     fn regist_to_ctx_impl(ctx: &mut tmj_core::script::ScriptContext) -> anyhow::Result<()> {

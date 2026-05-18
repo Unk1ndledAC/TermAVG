@@ -4,7 +4,7 @@ use anyhow::Context;
 use rodio::Source;
 use tmj_core::{
     audio::{AudioOp, AudioSource},
-    script::{ContextRef, ScriptValue, TypeName, lower_str},
+    script::{ContextRef, ScriptValue, TypeName, script_sym},
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
     utils::script_args,
 };
 
-lower_str!(ENV_EFFECT);
-lower_str!(SET);
-lower_str!(STOP);
-lower_str!(M_SOURCE);
+script_sym!(ENV_EFFECT, Type, "环境音效全局对象");
+script_sym!(SET, Function, "设置并播放环境音");
+script_sym!(STOP, Function, "停止环境音（可淡出）");
+script_sym!(M_SOURCE, Member, "当前环境音资源路径");
 pub const SOURCE: &str = M_SOURCE;
 
 #[derive(TypeName)]

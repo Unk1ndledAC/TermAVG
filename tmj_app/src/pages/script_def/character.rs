@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::HashMap, fs, rc::Rc};
 use tmj_core::{
     pathes,
-    script::{IntoScriptValue, RegistableType, ScriptValue, TabelGet, Table, TypeName, lower_str},
+    script::{IntoScriptValue, RegistableType, ScriptValue, TabelGet, Table, TypeName, script_sym},
 };
 
 use crate::pages::{behaviour::with_behaviour_mut_from_ctx_rc, pop_items::DialogueRecord};
 
-lower_str!(CHARACTER);
+script_sym!(CHARACTER, Type, "可构造的角色类型");
 /// 创建新的 Character Table
 #[derive(Serialize, Deserialize, Debug, Default, TypeName)]
 pub struct Character {
@@ -20,15 +20,12 @@ pub struct Character {
     extra: toml::Table, // 其他任意字典数据
 }
 
-//character member
-lower_str!(DISPLAY);
-lower_str!(_STANDS);
-lower_str!(_FACES);
-lower_str!(_VOICES);
-lower_str!(FACE);
-
-//character methods
-lower_str!(SAY);
+script_sym!(DISPLAY, Member, "角色显示名");
+script_sym!(_STANDS, Member, "立绘表（表情名 → 图片路径）");
+script_sym!(_FACES, Member, "表情名列表");
+script_sym!(_VOICES, Member, "语音表");
+script_sym!(FACE, Member, "当前表情名");
+script_sym!(SAY, Function, "角色说话（立绘、文本、语音）");
 
 impl RegistableType for Character {
     fn create_class_table(

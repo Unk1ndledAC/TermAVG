@@ -5,7 +5,7 @@ use strum_macros::Display;
 use tmj_core::{
     audio::{AudioManager, AudioSource},
     pathes,
-    script::lower_str,
+    script::script_sym,
 };
 
 #[derive(Clone, Hash, PartialEq, Debug, Display)]
@@ -39,6 +39,6 @@ thread_local! {
     pub static AUDIOM: RefCell<AudioManager<Tracks>> = RefCell::new(AudioManager::new().unwrap());
 }
 
-lower_str!(FADE_IN);
-lower_str!(FADE_OUT);
-lower_str!(TRANSITION);
+script_sym!(FADE_IN, Member, "BGM 淡入模式标识");
+script_sym!(FADE_OUT, Member, "BGM 淡出模式标识");
+script_sym!(TRANSITION, Member, "BGM 交叉过渡模式标识");

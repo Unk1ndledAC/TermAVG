@@ -1,18 +1,14 @@
-use tmj_core::script::{ScriptValue, TypeName, lower_str};
+use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
 use crate::pages::{behaviour::{BackgroundBehaviour, with_behaviour_mut_from_ctx_rc}, script_def::BaseVariable};
 
-lower_str!(BG);
-
-// method
-lower_str!(SET);
-lower_str!(TRANS_TO);
-lower_str!(SHOW_EDGE);
-lower_str!(HIDE_EDGE);
-
-// member
-lower_str!(M_IMAGE);
-lower_str!(M_IS_EDGE);
+script_sym!(BG, Type, "背景全局对象");
+script_sym!(SET, Function, "立即切换背景图");
+script_sym!(TRANS_TO, Function, "渐变过渡到新背景图");
+script_sym!(SHOW_EDGE, Function, "显示上下黑边遮罩");
+script_sym!(HIDE_EDGE, Function, "隐藏上下黑边遮罩");
+script_sym!(M_IMAGE, Member, "当前背景图路径");
+script_sym!(M_IS_EDGE, Member, "是否显示黑边");
 
 /// Bg: Background Object
 #[derive(TypeName)]

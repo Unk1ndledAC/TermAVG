@@ -17,7 +17,7 @@ use crate::audio::Tracks;
 use crate::gameflow::GameFlowMgr;
 use crate::pages::dialogue::DialogueScene;
 use crate::pages::{SAVE_MANAGER, UserScreen};
-use crate::utils::ConstInfo;
+use crate::utils::write_script_sym_reference;
 use crate::{GAME_SETTING, SETTING, utils};
 
 pub struct Game {
@@ -116,12 +116,16 @@ impl Game {
             .go_screen(&UserScreen::Main.to_string())
             .inspect_err(|e| tracing::error!("Game Main Sceen Set Failded! Game Init Failed!: {e}"));
 
-        // 将要用的脚本环境常量写入文件
-        let consts: Vec<_> = inventory::iter::<ConstInfo>.into_iter().collect();
-        use std::io::Write;
-        let output = std::fs::File::create(pathes::path("script_env.txt")).unwrap();
-        for info in consts {
-            writeln!(&output, "{}::{}", info.module, info.value).unwrap();
+        if let Err(e) =
+            write_script_sym_reference(&pathes::path("script_env.txt"))
+        {
+            tracing::warn!("write script_env.txt failed: {e:?}");
+        }
+
+        if let Err(e) = crate::pages::behaviour::ve_z_index::write_ve_z_index_reference(
+            &pathes::path("ve_z_index.txt"),
+        ) {
+            tracing::warn!("write ve_z_index.txt failed: {e:?}");
         }
 
         // 预处理脚本

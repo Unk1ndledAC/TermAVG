@@ -1,8 +1,8 @@
-use tmj_core::script::{FromCommand, IntoScriptValue, IntoTable, ScriptContext, Table, TypeName, lower_str};
+use tmj_core::script::{FromCommand, IntoScriptValue, IntoTable, ScriptContext, Table, TypeName, script_sym};
 
-lower_str!(CONTENT);
-lower_str!(XPOS);
-lower_str!(YPOS);
+script_sym!(CONTENT, Member, "文本对象内容");
+script_sym!(XPOS, Member, "文本对象 X 坐标");
+script_sym!(YPOS, Member, "文本对象 Y 坐标");
 
 
 #[derive(Default)]

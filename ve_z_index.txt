@@ -1,0 +1,16 @@
+# VisualElement z_index 参考（由 ve_z_index! 宏登记，启动时自动生成）
+# 格式: 常量名 = 值  # 说明
+
+Z_BG                     = 1000  # 背景主图（含过渡绘制）
+Z_BG_EDGE                = 1500  # 画面上/下黑边遮罩
+Z_CHAPTER_TITLE          = 2100  # 章节标题
+Z_CHAPTER_SUBTITLE       = 2200  # 章节副标题
+Z_CHARACTER_BASE         = 3000  # 立绘层基准，运行时 z_index = Z_CHARACTER_BASE + ls_id
+Z_FRAME_BLOCK            = 4000  # 对话框底板
+Z_FRAME_TEXT             = 4100  # 对话框正文
+Z_FRAME_NAME             = 4200  # 说话人名称
+Z_FRAME_SHORTKEY         = 4300  # 快捷键提示栏
+Z_FRAME_FACE             = 4400  # 对话框内头像
+Z_PARAGRAPH_TEXT         = 5000  # 旁白/段落文本框
+
+# 未在此表中的动态层：layer.* 由脚本 layer.z_deep 指定；character_* 见 Z_CHARACTER_BASE

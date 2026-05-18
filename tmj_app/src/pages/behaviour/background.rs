@@ -18,6 +18,7 @@ use crate::{
             Behaviour,
             animation::{Animation, img_trans::AniImgTrans},
             logical_area,
+            ve_z_index::{Z_BG, Z_BG_EDGE},
             visual_element::{VisualElement, VisualElementCustomDrawer, VisualElementKind},
         },
         script_def::env::BG,
@@ -107,7 +108,7 @@ impl Behaviour for BackgroundBehaviour {
         Ok(vec![
             VisualElement {
                 name: Self::VE_BG.to_string(),
-                z_index: 0,
+                z_index: Z_BG,
                 rect: area,
                 text_wrap: Some(Wrap { trim: false }),
                 kind: VisualElementKind::Custom {
@@ -119,7 +120,7 @@ impl Behaviour for BackgroundBehaviour {
             VisualElement {
                 name: Self::VE_EDGE_TOP.to_string(),
                 visible: is_edge_show,
-                z_index: 5,
+                z_index: Z_BG_EDGE,
                 rect: up,
                 clear_before_draw: true,
                 text_wrap: Some(Wrap { trim: false }),
@@ -130,7 +131,7 @@ impl Behaviour for BackgroundBehaviour {
             VisualElement {
                 name: Self::VE_EDGE_BOTTOM.to_string(),
                 visible: is_edge_show,
-                z_index: 5,
+                z_index: Z_BG_EDGE,
                 rect: down,
                 clear_before_draw: true,
                 text_wrap: Some(Wrap { trim: false }),

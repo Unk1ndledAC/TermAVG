@@ -5,21 +5,24 @@ chapter.show_title "X-1" 1.0
 chapter.show_sub_title "所有人的具体生活，已经降级为思辨性世界的生活。" 1.0
 
 #2
-text "我喜欢故事"
+text "我喜欢故事" "??" 
 
 #3
-text "倒不如说没有人不喜欢故事吧"
+text "倒不如说没有人不喜欢故事吧" 300
 
 #4
+layer_error = layer "LayerError" "effect" 1001 "Error"
+layer_error.show 1.0
 text "从世界发明了故事开始,人类就能通过阅读了解别人浓缩的人生以打法自己平庸的时间."
 
 #5
-text "理论著作可能是对方花了一生总结的思考, 小说里的冒险者能让读者能在另一个精彩有趣的世界体验一辈子都没办法遇见的刺激经历"
+text "理论著作可能是对方花了一生总结的思考, 小说里的冒险者能让读者能在另一个精彩有趣的世界体验一辈子都没办法遇见的刺激经历" "??"
 
 #6
 text "再蹩脚的创作家,无论是何种载体.在看的时候都是用自己的一部分空洞的时间和别人的思考和点子在交换吧"
 
 #7
+layer_error.hide 1.0
 text "我偏好剧情作品, 阅读了故事就好像多活了几年一样,真是奇妙啊"
 
 #8
@@ -79,7 +82,7 @@ mc = character "resource/mc.chr" // 主角 艾可思
 bxy = character "resource/bxy.chr" // 副女主 白循衍
 character_ls.set_characters fc
 bg.set "resource/bg_classroom.png"
-bgm "resource/relax.mp3"
+bgm.set "resource/bgm/relax.mp3"
 
 #26
 once fc.face however

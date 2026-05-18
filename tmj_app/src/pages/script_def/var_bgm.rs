@@ -4,7 +4,7 @@ use anyhow::Context;
 use rodio::Source;
 use tmj_core::{
     audio::{AudioOp, AudioSource},
-    script::{ContextRef, Interpreter, ScriptValue, TypeName, lower_str},
+    script::{ContextRef, Interpreter, ScriptValue, TypeName, script_sym},
 };
 
 use crate::{
@@ -13,13 +13,10 @@ use crate::{
     utils::script_args,
 };
 
-lower_str!(BGM);
-// method
-lower_str!(SET);
-lower_str!(STOP);
-
-// member
-lower_str!(M_SOURCE);
+script_sym!(BGM, Type, "背景音乐全局对象");
+script_sym!(SET, Function, "设置并播放 BGM");
+script_sym!(STOP, Function, "停止 BGM（可淡出）");
+script_sym!(M_SOURCE, Member, "当前 BGM 资源路径");
 
 #[derive(TypeName)]
 pub struct VBgm;

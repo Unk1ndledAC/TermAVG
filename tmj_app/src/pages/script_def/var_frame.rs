@@ -1,19 +1,15 @@
-use tmj_core::script::{ScriptValue, TypeName, lower_str};
+use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
 
 use crate::pages::script_def::BaseVariable;
 
-lower_str!(FRAME);
-
-// members
-lower_str!(VISIBLE);
-lower_str!(MODE);
-lower_str!(SPEAKER);
-
-// methods
-lower_str!(SHOW);
-lower_str!(HIDE);
-lower_str!(SET_MODE);
+script_sym!(FRAME, Type, "对话框全局对象");
+script_sym!(VISIBLE, Member, "对话框是否可见");
+script_sym!(MODE, Member, "对话框模式（如 normal）");
+script_sym!(SPEAKER, Member, "当前说话人名称");
+script_sym!(SHOW, Function, "显示对话框");
+script_sym!(HIDE, Function, "隐藏对话框");
+script_sym!(SET_MODE, Function, "设置对话框模式");
 
 #[derive(TypeName)]
 pub struct VFrame;

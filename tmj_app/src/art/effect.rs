@@ -105,7 +105,7 @@ pub fn text(
     }
 }
 
-fn blend(mask_color: Color, cell_color: Color, percentage: f64) -> Color {
+pub fn blend(mask_color: Color, cell_color: Color, percentage: f64) -> Color {
     let Color::Rgb(mask_red, mask_green, mask_blue) = mask_color else {
         return mask_color;
     };
@@ -123,7 +123,7 @@ fn blend(mask_color: Color, cell_color: Color, percentage: f64) -> Color {
     Color::Rgb(red as u8, green as u8, blue as u8)
 }
 
-fn cover(raw_buf: &mut Buffer, new_buf: &mut Buffer, area: Rect) {
+pub fn cover(raw_buf: &mut Buffer, new_buf: &mut Buffer, area: Rect) {
     for row in area.rows() {
         for col in row.columns() {
             let cell = &mut raw_buf[(col.x, col.y)];

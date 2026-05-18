@@ -1,8 +1,8 @@
-use tmj_core::script::{ScriptValue, TabelGet, Table, TableRef, TypeName, lower_str};
+use tmj_core::script::{ScriptValue, Table, TableRef, TypeName, script_sym};
 
 use crate::pages::script_def::{BaseVariable, layer};
 
-lower_str!(LAYER_LS);
+script_sym!(LAYER_LS, Type, "动态图层列表全局对象");
 
 #[derive(TypeName)]
 pub struct VLayerLs;

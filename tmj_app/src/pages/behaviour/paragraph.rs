@@ -12,6 +12,7 @@ use crate::{
             Behaviour,
             animation::{Animation, typewriter::AniTypeWriter},
             logical_area,
+            ve_z_index::Z_PARAGRAPH_TEXT,
             visual_element::{VisualElement, VisualElementKind},
         },
         script_def::{env::PARAGRAPH, var_paragraph::{M_CONTENT, M_VISIBLE}},
@@ -82,7 +83,7 @@ impl Behaviour for ParagraphBehaviour {
         Ok(vec![VisualElement {
             name: Self::VE_PARAGRAPH_TEXT.to_string(),
             visible: false,
-            z_index: 300,
+            z_index: Z_PARAGRAPH_TEXT,
             rect,
             clear_before_draw: false,
             alpha: 0.85,

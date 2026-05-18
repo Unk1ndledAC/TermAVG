@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use tmj_core::{
     pathes,
-    script::{IntoScriptValue, RegistableType, ScriptValue, Table, TypeName, lower_str},
+    script::{IntoScriptValue, RegistableType, ScriptValue, Table, TypeName, script_sym},
 };
 
 use crate::{
@@ -10,25 +10,22 @@ use crate::{
     utils::script_args::parse_arg,
 };
 
-lower_str!(LAYER);
+script_sym!(LAYER, Type, "可构造的动态图层类型");
 /// 创建新的 Layer Table
 #[derive(Debug, Default, TypeName)]
 pub struct Layer {}
 
-//character member
-lower_str!(NAME);
-lower_str!(Z_DEEP);
-lower_str!(M_VISIBLE);
-lower_str!(X);
-lower_str!(Y);
-lower_str!(W);
-lower_str!(H);
-lower_str!(DATA); // 效果识别字符串,如Image_path, 或者Error, ByteStream等效果
-lower_str!(LAYER_TYPE); // image or effect
-
-//character methods
-lower_str!(SHOW);
-lower_str!(HIDE);
+script_sym!(NAME, Member, "图层名称（唯一键）");
+script_sym!(Z_DEEP, Member, "绘制深度 z_index");
+script_sym!(M_VISIBLE, Member, "图层是否可见");
+script_sym!(X, Member, "图层左上角 X");
+script_sym!(Y, Member, "图层左上角 Y");
+script_sym!(W, Member, "图层宽度");
+script_sym!(H, Member, "图层高度");
+script_sym!(DATA, Member, "资源/效果数据（图路径或效果类型名）");
+script_sym!(LAYER_TYPE, Member, "图层类型：image 或 effect");
+script_sym!(SHOW, Function, "显示图层（可带淡入时长）");
+script_sym!(HIDE, Function, "隐藏图层（可带淡出时长）");
 
 impl RegistableType for Layer {
     fn create_class_table(
@@ -47,7 +44,8 @@ impl RegistableType for Layer {
         let root_id = ctx.alloc_table_id();
         let mut table = Table::with_tuid(root_id);
         table.set(NAME, name.into_script_val(), None);
-        table.set(M_VISIBLE, z_deep.into_script_val(), None);
+        table.set(M_VISIBLE, false.into_script_val(), None);
+        table.set(Z_DEEP, z_deep.into_script_val(), None);
         table.set(LAYER_TYPE, layer_type.clone().into_script_val(), None);
         table.set(DATA, data_str.into_script_val(), None);
         table.set(X, x.into_script_val(), None);

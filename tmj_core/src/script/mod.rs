@@ -53,6 +53,7 @@ pub use crate::impl_rust_object;
 pub use script_parsers::ScriptParser;
 
 pub use tmj_macro::TypeName;
-pub use tmj_macro::lower_str;
+pub use tmj_macro::script_sym;
+pub use tmj_macro::ve_z_index;
 pub use type_registry::*;
 pub use value_convert::*;

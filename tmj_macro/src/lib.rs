@@ -1,31 +1,119 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Expr, Ident, Lit, Meta, MetaNameValue};
+use syn::{parse_macro_input, DeriveInput, Expr, Ident, Lit, LitStr, Meta, MetaNameValue};
 
-/// 过程宏：根据全大写的标识符生成一个同名的字符串常量（值为全小写）
-/// 用法：const_script_str!(FADE_IN);
-/// 展开为：
-///     pub const FADE_IN: &str = "fade_in";
+/// 声明脚本 API 符号：生成小写键常量并登记到 inventory，供 `script_env.txt` 导出。
+///
+/// 用法：`script_sym!(BG, Type, "背景全局对象");`
+///
+/// - 第一参数：Rust 常量名（全大写标识符）
+/// - 第二参数：`Type` | `Member` | `Function`
+/// - 第三参数：中文说明
 #[proc_macro]
-pub fn lower_str(input: TokenStream) -> TokenStream {
-    // 解析输入为一个标识符
-    let ident = parse_macro_input!(input as Ident);
-
-    // 将标识符转换为小写字符串
+pub fn script_sym(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ScriptSymInput);
+    let ident = &input.name;
     let lower = ident.to_string().to_lowercase();
+    let description = input.description.value();
+    let category = script_sym_category_tokens(&input.category);
 
-    // 生成常量定义
     let expanded = quote! {
-            pub const #ident: &str = #lower;
-    inventory::submit! {
-                crate::utils::ConstInfo {
-                    module: module_path!(),
-                    value: #lower,
-                }
+        pub const #ident: &str = #lower;
+        inventory::submit! {
+            crate::utils::ScriptSymEntry {
+                const_name: stringify!(#ident),
+                value: #lower,
+                category: #category,
+                description: #description,
+                module: module_path!(),
             }
-        }; // 更好的方式：在生成的代码中调用 module_path!()，因为它在调用点展开
+        }
+    };
 
     expanded.into()
+}
+
+fn script_sym_category_tokens(category: &Ident) -> proc_macro2::TokenStream {
+    match category.to_string().as_str() {
+        "Type" => quote! { crate::utils::ScriptSymCategory::Type },
+        "Member" => quote! { crate::utils::ScriptSymCategory::Member },
+        "Function" => quote! { crate::utils::ScriptSymCategory::Function },
+        other => {
+            return syn::Error::new_spanned(
+                category,
+                format!("expected Type, Member, or Function, got `{other}`"),
+            )
+            .to_compile_error();
+        }
+    }
+}
+
+struct ScriptSymInput {
+    name: Ident,
+    category: Ident,
+    description: LitStr,
+}
+
+impl syn::parse::Parse for ScriptSymInput {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let name = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let category = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let description = input.parse()?;
+        Ok(Self {
+            name,
+            category,
+            description,
+        })
+    }
+}
+
+/// 声明 VisualElement 的 z_index 常量，并登记到 inventory 供启动时导出参考表。
+///
+/// 用法：`ve_z_index!(BG, 0, "背景主图层");`
+///
+/// 展开为同名 `pub const`（`i32`）及一条 `VeZIndexEntry` 记录。
+#[proc_macro]
+pub fn ve_z_index(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as VeZIndexInput);
+    let name = &input.name;
+    let value = &input.value;
+    let description = input.description.value();
+
+    let expanded = quote! {
+        pub const #name: i32 = #value;
+        inventory::submit! {
+            crate::pages::behaviour::ve_z_index::VeZIndexEntry {
+                name: stringify!(#name),
+                value: #value,
+                description: #description,
+            }
+        }
+    };
+
+    expanded.into()
+}
+
+struct VeZIndexInput {
+    name: Ident,
+    value: Expr,
+    description: LitStr,
+}
+
+impl syn::parse::Parse for VeZIndexInput {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let name = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let value = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let description = input.parse()?;
+        Ok(Self {
+            name,
+            value,
+            description,
+        })
+    }
 }
 
 /// 自动实现 Typename 特征

@@ -14,6 +14,9 @@ use crate::{
             Behaviour,
             animation::{self, Animation},
             logical_area,
+            ve_z_index::{
+                Z_FRAME_BLOCK, Z_FRAME_FACE, Z_FRAME_NAME, Z_FRAME_SHORTKEY, Z_FRAME_TEXT,
+            },
             visual_element::{VisualElement, VisualElementCustomDrawer, VisualElementKind},
         }, script_def::var_frame
     },
@@ -114,7 +117,7 @@ impl Behaviour for FrameBehaviour {
         let ves = vec![
             VisualElement {
                 name: Self::VE_FACE.to_string(),
-                z_index: 230,
+                z_index: Z_FRAME_FACE,
                 rect: Layout::ltwh2rect(area, &LAYOUT.frame_face_ltwh),
                 kind: VisualElementKind::Image {
                     source: String::new(),
@@ -123,7 +126,7 @@ impl Behaviour for FrameBehaviour {
             },
             VisualElement {
                 name: Self::VE_FRAME_BLOCK.to_string(),
-                z_index: 200,
+                z_index: Z_FRAME_BLOCK,
                 rect: frame_rect,
                 clear_before_draw: true,
                 text_wrap: Some(Wrap { trim: false }),
@@ -133,7 +136,7 @@ impl Behaviour for FrameBehaviour {
             },
             VisualElement {
                 name: Self::VE_FRAME_TEXT.to_string(),
-                z_index: 210,
+                z_index: Z_FRAME_TEXT,
                 rect: text_rect,
                 use_typewriter: true,
                 typewriter_speed: 40.0,
@@ -147,7 +150,7 @@ impl Behaviour for FrameBehaviour {
             VisualElement {
                 name: Self::VE_FRAME_NAME.to_string(),
                 visible: false,
-                z_index: 220,
+                z_index: Z_FRAME_NAME,
                 rect: name_rect,
                 clear_before_draw: true,
                 text_wrap: Some(Wrap { trim: false }),
@@ -159,7 +162,7 @@ impl Behaviour for FrameBehaviour {
             },
             VisualElement {
                 name: Self::VE_FRAME_SHORTKEY.to_string(),
-                z_index: 220,
+                z_index: Z_FRAME_SHORTKEY,
                 rect: short_key_rect,
                 text_wrap: Some(Wrap { trim: false }),
                 kind: VisualElementKind::Custom { drawer: VisualElementCustomDrawer::from(draw_shortkey_bar)},

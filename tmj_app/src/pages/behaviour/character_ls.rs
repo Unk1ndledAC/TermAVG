@@ -13,6 +13,7 @@ use crate::{
         dialogue::DialogueScene,
         behaviour::{
             logical_area,
+            ve_z_index::Z_CHARACTER_BASE,
             visual_element::{VisualElement, VisualElementKind},
         },
         script_def::{
@@ -85,7 +86,7 @@ impl Behaviour for CharactersStage {
             if let Some(ve) = elements.iter_mut().find(|x| x.name == ve_name) {
                 ve.visible = true;
                 ve.rect = rect;
-                ve.z_index = 100 + ls_id as i32;
+                ve.z_index = Z_CHARACTER_BASE + ls_id as i32;
                 if let VisualElementKind::Image { source: current } = &mut ve.kind {
                     *current = source;
                 } else {
@@ -177,7 +178,7 @@ fn read_stand_image(ctx: &ContextRef, c: &ScriptValue) -> anyhow::Result<Option<
 fn make_character_element(ls_id: i64, rect: Rect, source: String) -> VisualElement {
     VisualElement {
         name: format!("character_{ls_id}"),
-        z_index: 100 + ls_id as i32,
+        z_index: Z_CHARACTER_BASE + ls_id as i32,
         rect,
         kind: VisualElementKind::Image { source },
         ..Default::default()
