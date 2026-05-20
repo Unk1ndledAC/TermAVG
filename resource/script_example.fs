@@ -126,6 +126,4 @@ paragraph.hide
 frame.show
 text 这家伙在说什么呢,感觉是玩⚪玩的所以不敢在网络说话在线下找到我疯狂吐槽顺便高歌一首哈基米音乐
 
-#
-add_layer "image" "qunliao" "resource/qunliao.png" // 添加一层悬浮图像, 为手机群聊
 
