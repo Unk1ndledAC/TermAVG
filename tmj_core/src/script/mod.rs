@@ -44,7 +44,9 @@ pub use task_queue::{TaskQueue, QueueStatus};
 pub use session::{SessionExecutor, SessionStatus};
 
 // 解释器
-pub use interpreter::{Interpreter, InterpreterStatus};
+pub use interpreter::{
+    Interpreter, InterpreterStatus, DEFAULT_WAIT_SKIP_BUFFER_SECS,
+};
 
 // 宏
 pub use crate::impl_rust_object;

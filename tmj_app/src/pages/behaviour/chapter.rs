@@ -58,7 +58,8 @@ impl Behaviour for ChapterBehaviour {
     }
 
     fn is_animating(&self) -> bool {
-        self.title_alpha_ani.is_animing() || self.subtitle_alpha_ani.is_animing()
+        (!self.title.is_empty() && self.title_alpha_ani.is_animing())
+            || (!self.subtitle.is_empty() && self.subtitle_alpha_ani.is_animing())
     }
 
     fn build_elements(
@@ -155,10 +156,8 @@ impl Behaviour for ChapterBehaviour {
     }
 
     fn on_end_session(&mut self, _ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
-        self.title = "".into();
-        self.subtitle = "".into();
-        self.title_alpha_ani.target_alpha = 0.0;
-        self.subtitle_alpha_ani.target_alpha = 0.0;
+        self.title.clear();
+        self.subtitle.clear();
         self.title_alpha_ani.reset();
         self.subtitle_alpha_ani.reset();
         Ok(())

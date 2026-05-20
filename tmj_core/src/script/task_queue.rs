@@ -189,6 +189,22 @@ impl TaskQueue {
             })
     }
 
+    /// 将阻塞型 executor 的等待缩短到约一帧，便于用户跳过后续继续执行。
+    pub fn skip_blocking_waits_with_buffer(&mut self, buffer_secs: f64) {
+        let mut changed = false;
+        for task in &mut self.active_tasks {
+            if task.executor.is_blocking() && task.executor.is_waiting() {
+                changed |= task.executor.skip_wait_with_buffer(buffer_secs);
+            }
+        }
+        if changed {
+            self.blocking_wait = self
+                .min_remaining_time()
+                .map(WaitCondition::Time)
+                .or_else(|| self.blocking_wait.clone());
+        }
+    }
+
     pub fn clear(&mut self) {
         self.pending_tasks.clear();
         self.active_tasks.clear();

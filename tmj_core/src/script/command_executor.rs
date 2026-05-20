@@ -17,6 +17,10 @@ pub struct CommandExecutor {
     state: ExecutorState,
     /// 时间等待的剩余时间
     time_remaining: Option<f64>,
+    /// Chain：下一条待执行命令下标
+    chain_index: usize,
+    /// Chain：当前子命令（含 wait 恢复状态）
+    chain_sub: Option<Box<CommandExecutor>>,
 }
 
 enum ExecutorState {
@@ -34,6 +38,8 @@ impl CommandExecutor {
             block_type,
             state: ExecutorState::Ready,
             time_remaining: None,
+            chain_index: 0,
+            chain_sub: None,
         }
     }
 
@@ -48,13 +54,16 @@ impl CommandExecutor {
 
     /// 更新时间等待
     pub fn update(&mut self, delta_time: f64) -> bool {
+        if let Some(sub) = self.chain_sub.as_mut() {
+            return sub.update(delta_time);
+        }
+
         if let ExecutorState::Waiting(WaitCondition::Time(total)) = &self.state {
             let remaining = self.time_remaining.get_or_insert(*total);
             *remaining -= delta_time;
 
             if *remaining <= 0.0 {
-                // 时间到期，继续执行
-                self.state = ExecutorState::Ready;
+                self.state = ExecutorState::Completed;
                 return true;
             }
         }
@@ -63,6 +72,10 @@ impl CommandExecutor {
 
     /// 处理事件
     pub fn handle_event(&mut self, event: &InputEvent) -> bool {
+        if let Some(sub) = self.chain_sub.as_mut() {
+            return sub.handle_event(event);
+        }
+
         if let ExecutorState::Waiting(condition) = &self.state {
             let should_resume = match condition {
                 WaitCondition::Click => matches!(event, InputEvent::Click),
@@ -80,14 +93,21 @@ impl CommandExecutor {
             };
 
             if should_resume {
-                self.state = ExecutorState::Ready;
+                self.state = ExecutorState::Completed;
                 return true;
             }
         }
         false
     }
 
+    fn is_chain(&self) -> bool {
+        matches!(self.command, Command::Chain { .. })
+    }
+
     pub fn is_waiting(&self) -> bool {
+        if let Some(sub) = self.chain_sub.as_ref() {
+            return sub.is_waiting();
+        }
         matches!(self.state, ExecutorState::Waiting(_))
     }
 
@@ -108,6 +128,9 @@ impl CommandExecutor {
 
     /// 获取剩余等待时间 (用于外部计时器)
     pub fn remaining_time(&self) -> Option<f64> {
+        if let Some(sub) = self.chain_sub.as_ref() {
+            return sub.remaining_time();
+        }
         if let ExecutorState::Waiting(WaitCondition::Time(_)) = &self.state {
             self.time_remaining
         } else {
@@ -115,16 +138,48 @@ impl CommandExecutor {
         }
     }
 
+    /// 将当前等待压缩到至多 `buffer_secs`（时间等待取 min；点击/输入等待改为一帧时间等待）。
+    pub fn skip_wait_with_buffer(&mut self, buffer_secs: f64) -> bool {
+        if let Some(sub) = self.chain_sub.as_mut() {
+            return sub.skip_wait_with_buffer(buffer_secs);
+        }
+        if !self.is_waiting() {
+            return false;
+        }
+        let buffer = buffer_secs.max(0.0);
+        match &self.state {
+            ExecutorState::Waiting(WaitCondition::Time(_)) => {
+                let remaining = self.time_remaining.get_or_insert(buffer);
+                *remaining = (*remaining).min(buffer);
+                self.state = ExecutorState::Waiting(WaitCondition::Time(*remaining));
+            }
+            ExecutorState::Waiting(_) => {
+                self.time_remaining = Some(buffer);
+                self.state = ExecutorState::Waiting(WaitCondition::Time(buffer));
+            }
+            _ => return false,
+        }
+        true
+    }
+
     fn execute(&mut self, context: &Rc<RefCell<ScriptContext>>) -> ExecuteStatus {
-        let result = self.execute_command(context);
+        let result = if self.is_chain() {
+            self.advance_chain(context)
+        } else {
+            self.execute_command(context)
+        };
 
         match &result {
             ExecuteStatus::Waiting(WaitCondition::Time(total)) => {
-                self.time_remaining = Some(*total);
-                self.state = ExecutorState::Waiting(WaitCondition::Time(*total));
+                if self.chain_sub.is_none() {
+                    self.time_remaining = Some(*total);
+                    self.state = ExecutorState::Waiting(WaitCondition::Time(*total));
+                }
             }
             ExecuteStatus::Waiting(condition) => {
-                self.state = ExecutorState::Waiting(condition.clone());
+                if self.chain_sub.is_none() {
+                    self.state = ExecutorState::Waiting(condition.clone());
+                }
             }
             ExecuteStatus::Completed => {
                 self.state = ExecutorState::Completed;
@@ -135,6 +190,41 @@ impl CommandExecutor {
         }
 
         result
+    }
+
+    /// 逐条执行 Chain，保留 `chain_index` / `chain_sub`，wait 结束后不从头重跑。
+    fn advance_chain(&mut self, context: &Rc<RefCell<ScriptContext>>) -> ExecuteStatus {
+        let Command::Chain { commands } = &self.command else {
+            return ExecuteStatus::Error("advance_chain called on non-Chain".to_string());
+        };
+        let commands = commands.as_slice();
+        loop {
+            if self.chain_index >= commands.len() {
+                self.chain_sub = None;
+                return ExecuteStatus::Completed;
+            }
+
+            if self.chain_sub.is_none() {
+                self.chain_sub = Some(Box::new(CommandExecutor::new(
+                    commands[self.chain_index].clone(),
+                )));
+            }
+
+            let sub = self.chain_sub.as_mut().expect("chain_sub just set");
+            match sub.step(context) {
+                ExecuteStatus::Completed => {
+                    self.chain_sub = None;
+                    self.chain_index += 1;
+                }
+                ExecuteStatus::Waiting(condition) => {
+                    return ExecuteStatus::Waiting(condition);
+                }
+                ExecuteStatus::Error(e) => {
+                    self.chain_sub = None;
+                    return ExecuteStatus::Error(e);
+                }
+            }
+        }
     }
 
     fn execute_command(&mut self, context: &Rc<RefCell<ScriptContext>>) -> ExecuteStatus {
@@ -236,19 +326,9 @@ impl CommandExecutor {
                 ExecuteStatus::Completed
             }
 
-            Command::Chain { commands } => {
-                for cmd in commands {
-                    let mut sub_executor = CommandExecutor::new(cmd.clone());
-                    match sub_executor.step(context) {
-                        ExecuteStatus::Completed => continue,
-                        ExecuteStatus::Waiting(condition) => {
-                            return ExecuteStatus::Waiting(condition);
-                        }
-                        ExecuteStatus::Error(e) => return ExecuteStatus::Error(e),
-                    }
-                }
-                ExecuteStatus::Completed
-            }
+            Command::Chain { .. } => ExecuteStatus::Error(
+                "Chain must be executed via advance_chain".to_string(),
+            ),
 
             Command::Empty => ExecuteStatus::Completed,
         }
@@ -367,4 +447,61 @@ pub enum InputEvent {
     Click,
     Text(String),
     Key(char),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::script::{Command, ScriptContext, WaitCondition};
+    use std::{cell::RefCell, rc::Rc};
+
+    fn test_ctx() -> ContextRef {
+        Rc::new(RefCell::new(ScriptContext::new()))
+    }
+
+    #[test]
+    fn chain_resumes_after_wait_without_restarting() {
+        let chain = Command::Chain {
+            commands: vec![
+                Command::Wait {
+                    condition: WaitCondition::Time(1.0),
+                },
+                Command::Wait {
+                    condition: WaitCondition::Time(2.0),
+                },
+            ],
+        };
+        let mut ex = CommandExecutor::new(chain);
+        let ctx = test_ctx();
+
+        assert!(matches!(
+            ex.step(&ctx),
+            ExecuteStatus::Waiting(WaitCondition::Time(t)) if (t - 1.0).abs() < f64::EPSILON
+        ));
+        assert!(ex.chain_sub.is_some());
+
+        assert!(ex.update(1.0));
+        assert!(matches!(
+            ex.step(&ctx),
+            ExecuteStatus::Waiting(WaitCondition::Time(t)) if (t - 2.0).abs() < f64::EPSILON
+        ));
+
+        assert!(ex.update(2.0));
+        assert!(matches!(ex.step(&ctx), ExecuteStatus::Completed));
+    }
+
+    #[test]
+    fn standalone_wait_does_not_repeat_after_time_elapsed() {
+        let mut ex = CommandExecutor::new(Command::Wait {
+            condition: WaitCondition::Time(0.5),
+        });
+        let ctx = test_ctx();
+
+        assert!(matches!(
+            ex.step(&ctx),
+            ExecuteStatus::Waiting(WaitCondition::Time(_))
+        ));
+        assert!(ex.update(0.5));
+        assert!(matches!(ex.step(&ctx), ExecuteStatus::Completed));
+    }
 }

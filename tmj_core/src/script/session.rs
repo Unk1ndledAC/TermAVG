@@ -91,4 +91,11 @@ impl SessionExecutor {
     pub fn min_remaining_time(&self) -> Option<f64> {
         self.task_queue.min_remaining_time()
     }
+
+    pub fn skip_blocking_waits_with_buffer(&mut self, buffer_secs: f64) {
+        if self.is_completed {
+            return;
+        }
+        self.task_queue.skip_blocking_waits_with_buffer(buffer_secs);
+    }
 }

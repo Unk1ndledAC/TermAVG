@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Context;
 use tmj_core::{
     pathes,
@@ -5,6 +7,8 @@ use tmj_core::{
 };
 
 use crate::{
+    setting::SETTING,
+    utils::preparse_script,
     pages::{
         behaviour::{FrameBehaviour, with_behaviour_mut_from_ctx_rc},
         script_def::{
@@ -43,6 +47,20 @@ script_sym!(DEL_LAYER, Function, "从 layer_ls 移除图层");
 script_sym!(SEE, Function, "注视/看向效果");
 script_sym!(VOICE, Function, "播放语音");
 script_sym!(LOG, Function, "写入日志");
+script_sym!(REBUILD, Function, "重新预处理 setting 指定的 fs 脚本");
+
+/// 重新预处理 `setting.toml` 中 `preprogress_script` 列出的 fs 脚本（生成对应 fss）。
+pub fn rebuild_preprogress_scripts() -> anyhow::Result<()> {
+    for origin_script in &SETTING.preprogress_script {
+        let o_path = pathes::path(origin_script);
+        let t_path = PathBuf::from("resource")
+            .join(PathBuf::from(o_path.file_name().unwrap()).with_extension("fss"));
+        preparse_script(&o_path, &t_path, None)
+            .with_context(|| format!("rebuild failed: {:?}", o_path))?;
+        tracing::info!("rebuild script {:?} -> {:?}", o_path, t_path);
+    }
+    Ok(())
+}
 
 fn regist_base_gvar(ctx: &mut ScriptContext) -> anyhow::Result<()> {
     VCharacterLs::regist_to_ctx(ctx)?;
@@ -165,6 +183,13 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
             let message = format!("log {path} => {:?}", value);
             println!("{message}");
             tracing::info!("{message}");
+            Ok(ScriptValue::Nil)
+        });
+    }
+
+    {
+        ctx.set_global_func(REBUILD, |_ctx, _args| {
+            rebuild_preprogress_scripts()?;
             Ok(ScriptValue::Nil)
         });
     }

@@ -8,6 +8,9 @@ use crate::script::{
 use std::{cell::RefCell, rc::Rc};
 use tracing::info;
 
+/// 用户跳过时，阻塞等待保留的默认时长（约 1 帧 @60Hz）。
+pub const DEFAULT_WAIT_SKIP_BUFFER_SECS: f64 = 1.0 / 60.0;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum InterpreterStatus {
     Idle,
@@ -233,6 +236,24 @@ impl Interpreter {
         self.current_session
             .as_ref()
             .and_then(|s| s.min_remaining_time())
+    }
+
+    /// 将当前 session 中阻塞型 `wait` 压缩到约一帧，下一两次 `update` 后即可继续执行后续命令。
+    pub fn skip_blocking_waits_with_buffer(&mut self, buffer_secs: f64) {
+        let Some(session) = self.current_session.as_mut() else {
+            return;
+        };
+        if session.is_completed() {
+            return;
+        }
+
+        session.skip_blocking_waits_with_buffer(buffer_secs);
+
+        self.status = match session.blocking_wait_condition() {
+            Some(condition) => InterpreterStatus::Waiting(condition),
+            _ if session.is_completed() => InterpreterStatus::SessionEnd,
+            _ => InterpreterStatus::Running,
+        };
     }
 }
 

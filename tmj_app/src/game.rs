@@ -18,7 +18,7 @@ use crate::gameflow::GameFlowMgr;
 use crate::pages::dialogue::DialogueScene;
 use crate::pages::{SAVE_MANAGER, UserScreen};
 use crate::utils::write_script_sym_reference;
-use crate::{GAME_SETTING, SETTING, utils};
+use crate::{GAME_SETTING, SETTING};
 
 pub struct Game {
     pub game_flow: RefCell<GameFlowMgr>,
@@ -128,15 +128,8 @@ impl Game {
             tracing::warn!("write ve_z_index.txt failed: {e:?}");
         }
 
-        // 预处理脚本
-        for origin_script in &SETTING.preprogress_script {
-            let o_path = pathes::path(origin_script);
-            let t_path = PathBuf::from("resource")
-                .join(PathBuf::from(o_path.file_name().unwrap()).with_extension("fss"));
-            match utils::preparse_script(&o_path, &t_path, None) {
-                Err(e) => tracing::error!("{:?}", e),
-                _ => {}
-            };
+        if let Err(e) = crate::pages::script_def::env::rebuild_preprogress_scripts() {
+            tracing::error!("preprocess script failed: {:?}", e);
         }
 
         Game {

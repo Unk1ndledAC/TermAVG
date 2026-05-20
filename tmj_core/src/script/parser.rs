@@ -144,22 +144,35 @@ impl Parser {
 
     /// 解析调用或 set 命令
     fn parse_call_or_set(&mut self) -> Result<Command, String> {
-        // 解析路径 (如 dialogue_frame.show)
         let path = self.parse_path()?;
+        // 直接解析第一个命令
+        let first = self.command_from_path(path)?;
+        // 检测到链式调用
+        if !self.check(&Token::Arrow) {
+            return Ok(first);
+        }
+        // 继续解析
+        let mut commands = vec![first];
+        while self.check(&Token::Arrow) {
+            self.advance();
+            let path = self.parse_path()?;
+            commands.push(self.command_from_path(path)?);
+        }
+        Ok(Command::Chain { commands })
+    }
 
-        // 检查是否是 wait 命令
+    /// 在已解析出 path 后，生成对应 Command（wait / once / set / next / call）
+    fn command_from_path(&mut self, path: String) -> Result<Command, String> {
         if path == "wait" {
             let condition = self.parse_wait_condition()?;
             return Ok(Command::Wait { condition });
         }
 
-        // 检查是否是 once 命令
         if path == "once" {
             let args = self.parse_args()?;
             if args.is_empty() {
                 return Err("once requires at least one argument".to_string());
             }
-            // once 的第一个参数是路径
             let target_path = match &args[0] {
                 ScriptValue::Expression(s) => s.clone(),
                 _ => return Err("once first argument must be path expression".to_string()),
@@ -171,16 +184,14 @@ impl Parser {
             });
         }
 
-        // 检查是否是 set 命令
         if path == "set" {
             let args = self.parse_args()?;
             if args.is_empty() {
                 return Err("set requires at least one argument".to_string());
             }
-            // set 的第一个参数是路径
             let target_path = match &args[0] {
                 ScriptValue::Expression(s) => s.clone(),
-                _ => return Err("set first argument {} must be expression".to_string()),
+                _ => return Err("set first argument must be expression".to_string()),
             };
             let rest_args = args[1..].to_vec();
             return Ok(Command::Set {
@@ -205,50 +216,8 @@ impl Parser {
             });
         }
 
-        // 解析参数
         let args = self.parse_args()?;
-
-        // 检查是否有链式调用
-        if self.check(&Token::Arrow) {
-            return self.parse_chain(path, args);
-        }
-
-        // 普通调用命令
         Ok(Command::Call { path, args })
-    }
-
-    /// 解析链式调用
-    fn parse_chain(
-        &mut self,
-        first_path: String,
-        first_args: Vec<ScriptValue>,
-    ) -> Result<Command, String> {
-        let mut commands = Vec::new();
-
-        // 第一个命令
-        commands.push(Command::Call {
-            path: first_path,
-            args: first_args,
-        });
-
-        // 解析后续链式命令
-        while self.check(&Token::Arrow) {
-            self.advance(); // 跳过 ->
-
-            // 链式命令可能以 . 开头 (方法调用)
-            let path = if self.check(&Token::Dot) {
-                // .method 形式，需要结合前一个命令的返回值
-                // 简化：直接解析为路径
-                self.parse_path()?
-            } else {
-                self.parse_path()?
-            };
-
-            let args = self.parse_args()?;
-            commands.push(Command::Call { path, args });
-        }
-
-        Ok(Command::Chain { commands })
     }
 
     /// 解析路径 (如 ef.SnowEffect.begin_snow)
@@ -388,5 +357,44 @@ impl Parser {
 
     fn is_at_end(&self) -> bool {
         self.position >= self.tokens.len() || matches!(self.current(), Token::Eof)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::script::{ScriptParser, WaitCondition};
+
+    #[test]
+    fn chain_parses_wait_as_wait_command() {
+        let cmds = ScriptParser::parse_session(
+            r#"text "a" "b" -> wait 1.0 -> mc.say "c""#,
+        )
+        .expect("parse");
+
+        assert_eq!(cmds.len(), 1);
+        let Command::Chain { commands } = &cmds[0] else {
+            panic!("expected Chain, got {:?}", cmds[0]);
+        };
+        assert_eq!(commands.len(), 3);
+        assert!(matches!(&commands[0], Command::Call { path, .. } if path == "text"));
+        assert!(matches!(
+            &commands[1],
+            Command::Wait {
+                condition: WaitCondition::Time(t)
+            } if (*t - 1.0).abs() < f64::EPSILON
+        ));
+        assert!(matches!(&commands[2], Command::Call { path, .. } if path == "mc.say"));
+    }
+
+    #[test]
+    fn standalone_wait_still_works() {
+        let cmds = ScriptParser::parse_session("wait 0.5").expect("parse");
+        assert!(matches!(
+            &cmds[0],
+            Command::Wait {
+                condition: WaitCondition::Time(t)
+            } if (*t - 0.5).abs() < f64::EPSILON
+        ));
     }
 }

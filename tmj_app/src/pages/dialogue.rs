@@ -11,6 +11,7 @@ use tmj_core::command::{CmdBuffer, GameCmd};
 use tmj_core::event::handler::EventDispatcher;
 use tmj_core::script::{
     Interpreter, InterpreterStatus, ScriptContext, ScriptParser, SerializableContext,
+    DEFAULT_WAIT_SKIP_BUFFER_SECS,
 };
 use tmj_core::{pathes, script};
 use tracing::info;
@@ -319,11 +320,38 @@ impl Draw for DialogueScene {
 
 impl DialogueScene {
     fn is_any_animating(&self) -> bool {
-        self.script_behaviours
+        let animing_bs: Vec<_> = self.script_behaviours
             .behaviours
             .borrow()
-            .values()
-            .any(|b| b.is_animating())
+            // .values()
+            .iter()
+            .filter(|(_, b)| b.is_animating())
+            .map(|(name, _)| name.clone())
+            .collect();
+            // .any(|b| b.is_animating())
+        if !animing_bs.is_empty() {
+        tracing::info!("animing behaviours {:?}", animing_bs);
+return true;
+
+        }
+        return false;
+    }
+
+    fn force_over_all_animations(&mut self) -> anyhow::Result<()> {
+        for behaviour in self.script_behaviours.values_mut().values_mut() {
+            if behaviour.is_animating() {
+                behaviour.on_force_over_animation()?;
+            }
+        }
+        Ok(())
+    }
+
+    fn wait_skip_buffer_secs(&self) -> f64 {
+        if self.last_tick_secs > 0.0 {
+            self.last_tick_secs
+        } else {
+            DEFAULT_WAIT_SKIP_BUFFER_SECS
+        }
     }
 
     fn toggle_dialouge(&mut self) {
@@ -404,13 +432,16 @@ impl DialogueScene {
     }
 
     fn on_try_push_dialouge(&mut self) -> anyhow::Result<bool> {
-        // First click during animation only forces VE to settle; no session advance.
+        
+        if self.interpreter.borrow().is_waiting() {
+            self.interpreter
+            .borrow_mut()
+            .skip_blocking_waits_with_buffer(self.wait_skip_buffer_secs());
+            self.force_over_all_animations()?;
+            return Ok(false);
+        }
         if self.is_any_animating() {
-            for behaviour in self.script_behaviours.values_mut().values_mut() {
-                if behaviour.is_animating() {
-                    behaviour.on_force_over_animation()?;
-                }
-            }
+            self.force_over_all_animations()?;
             return Ok(false);
         }
 
@@ -530,7 +561,7 @@ impl EventDispatcher for DialogueScene {
         }
         match mouse.kind {
             MouseEventKind::Up(btn) => {
-                if btn == MouseButton::Left {
+                if btn == MouseButton::Left {                        
                     match self
                         .on_try_push_dialouge()
                         .context("try push dialouge failed!")

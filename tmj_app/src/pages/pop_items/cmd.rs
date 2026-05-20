@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ratatui::{
-    crossterm::event::{KeyCode, KeyModifiers},
+    crossterm::event::KeyCode,
     text::{Line, Span},
     widgets::{self, Paragraph},
 };
@@ -50,6 +50,7 @@ impl PopItem for CmdInputItem {
     }
 
     fn draw(&self, frame: &mut ratatui::Frame, rect: ratatui::layout::Rect) -> anyhow::Result<()>{
+        let rect = rect.centered(ratatui::layout::Constraint::Percentage(80), ratatui::layout::Constraint::Length(5));
         let line = Line::from_iter([
             Span::from(">").style(theme::THEME.root),
             Span::from(self.current_input.clone()).style(theme::THEME.content),
@@ -69,6 +70,11 @@ impl PopItem for CmdInputItem {
 impl EventDispatcher for CmdInputItem {
     fn on_key(&mut self, key: &ratatui::crossterm::event::KeyEvent) {
         if self.is_hide() {
+            return;
+        }
+        if matches!(key.code, KeyCode::Esc) && key.is_release() {
+            self.hide();
+            self.current_input.clear();
             return;
         }
         if key.is_release() {

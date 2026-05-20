@@ -30,8 +30,14 @@ impl Animation for AniAlpha {
     ) -> anyhow::Result<()> {
         let elapsed_secs = self.run_time.as_secs_f64().max(0.0);
         let total_secs = self.anim_time.as_secs_f64().max(0.0);
-        let mut evalued_alpha = self.start_alpha + (self.target_alpha - self.start_alpha) * (elapsed_secs / total_secs);
-        evalued_alpha = evalued_alpha.clamp(0.0, self.target_alpha);
+        let mut evalued_alpha = if total_secs <= 0.0 {
+            self.target_alpha
+        } else {
+            self.start_alpha
+                + (self.target_alpha - self.start_alpha) * (elapsed_secs / total_secs)
+        };
+        let alpha_max = self.start_alpha.max(self.target_alpha);
+        evalued_alpha = evalued_alpha.clamp(0.0, alpha_max);
         ve.alpha = evalued_alpha;
         if evalued_alpha <= 0.001 {
             ve.visible = false
@@ -42,20 +48,30 @@ impl Animation for AniAlpha {
     }
 
     fn update(&mut self, tick_delta: std::time::Duration) {
+        if self.anim_time.is_zero() {
+            self.run_time = Duration::ZERO;
+            self.start_alpha = self.target_alpha;
+            return;
+        }
         self.run_time += tick_delta;
-        self.run_time.clamp(Duration::ZERO, self.anim_time);
+        self.run_time = self.run_time.clamp(Duration::ZERO, self.anim_time);
+        if self.run_time >= self.anim_time {
+            self.start_alpha = self.target_alpha;
+        }
     }
 
     fn force_over(&mut self) {
         self.run_time = self.anim_time;
+        self.start_alpha = self.target_alpha;
     }
 
     fn reset(&mut self) {
-        self.run_time = time::Duration::from_secs_f64(0.0);
+        self.run_time = Duration::ZERO;
+        self.anim_time = Duration::ZERO;
         self.start_alpha = self.target_alpha;
     }
 
     fn is_animing(&self) -> bool {
-        self.run_time < self.anim_time
+        !self.anim_time.is_zero() && self.run_time < self.anim_time
     }
 }
