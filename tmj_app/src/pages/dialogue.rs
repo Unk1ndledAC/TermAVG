@@ -435,7 +435,7 @@ return true;
 
     fn on_try_push_dialouge(&mut self) -> anyhow::Result<bool> {
         
-        if self.interpreter.borrow().is_waiting() {
+        if self.interpreter.borrow().is_any_executor_waiting() {
             self.interpreter
             .borrow_mut()
             .skip_blocking_waits_with_buffer(self.wait_skip_buffer_secs());

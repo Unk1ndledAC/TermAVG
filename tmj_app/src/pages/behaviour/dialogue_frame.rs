@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ratatui::{
     layout::{Alignment, Rect},
     text::{Line, Span},
@@ -10,7 +12,7 @@ use crate::{
     art::theme::THEME,
     layout::Layout,
     pages::{
-        dialogue::DialogueScene, behaviour::{
+        behaviour::{
             Behaviour,
             animation::{self, Animation},
             logical_area,
@@ -18,7 +20,9 @@ use crate::{
                 Z_FRAME_BLOCK, Z_FRAME_FACE, Z_FRAME_NAME, Z_FRAME_SHORTKEY, Z_FRAME_TEXT,
             },
             visual_element::{VisualElement, VisualElementCustomDrawer, VisualElementKind},
-        }, script_def::var_frame
+        },
+        dialogue::DialogueScene,
+        script_def::var_frame,
     },
 };
 
@@ -61,13 +65,14 @@ impl FrameBehaviour {
         self.typewriter.start_text = "".into();
     }
 
-    pub fn export_say(&mut self, speaker: String, face_img: String, text: String) {
+    pub fn export_say(&mut self, speaker: String, face_img: String, text: String, speed: f64) {
         self.face_img = face_img;
         self.text = text.clone();
         self.speaker = speaker;
-        self.typewriter.reset();
-        self.typewriter.target_text = text;
-        self.typewriter.start_text = "".into();
+        self.typewriter.start_text = self.typewriter.target_text.clone();
+        self.typewriter.target_text = format!("{}{text}", self.typewriter.target_text);
+        self.typewriter.run_time = Duration::ZERO;
+        self.typewriter.speed = speed;
     }
 }
 
@@ -165,7 +170,9 @@ impl Behaviour for FrameBehaviour {
                 z_index: Z_FRAME_SHORTKEY,
                 rect: short_key_rect,
                 text_wrap: Some(Wrap { trim: false }),
-                kind: VisualElementKind::Custom { drawer: VisualElementCustomDrawer::from(draw_shortkey_bar)},
+                kind: VisualElementKind::Custom {
+                    drawer: VisualElementCustomDrawer::from(draw_shortkey_bar),
+                },
                 style: THEME.content,
                 ..Default::default()
             },
@@ -211,7 +218,9 @@ impl Behaviour for FrameBehaviour {
 
         if let Some(ve) = elements.iter_mut().find(|x| x.name == Self::VE_FACE) {
             ve.visible = !self.face_img.is_empty();
-            if !self.face_img.is_empty() && let VisualElementKind::Image { source } = &mut ve.kind {
+            if !self.face_img.is_empty()
+                && let VisualElementKind::Image { source } = &mut ve.kind
+            {
                 *source = self.face_img.clone();
             }
         }

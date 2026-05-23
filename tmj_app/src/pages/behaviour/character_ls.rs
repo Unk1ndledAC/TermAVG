@@ -1,28 +1,29 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Div, Mul};
 use std::time::Duration;
 
 use ratatui::layout::Rect;
-use tmj_core::script::{ContextRef, TableRef};
-use tmj_core::{
-    script::{ScriptValue, TabelGet, TypeName},
-};
+use tmj_core::script::{ContextRef, IntoScriptValue, TableRef};
+use tmj_core::script::{ScriptValue, TabelGet, TypeName};
 
 use crate::pages::behaviour::Behaviour;
+use crate::pages::behaviour::animation::img_trans::AniImgTrans;
+use crate::pages::behaviour::animation::offset_shift::ShiftDirection;
 use crate::{
     LAYOUT,
     pages::{
-        dialogue::DialogueScene,
         behaviour::{
             animation::{
-                OffsetShift, VeAniMap, VeTypedAnimationMap, alpha_shift::AniAlpha,
+                OffsetShift, VeAniMap, VeTypedAnimationMap,
+                alpha_shift::AniAlpha,
                 rect_trans::{AniRectTrans, RectTransCurve},
             },
             logical_area,
             ve_z_index::Z_CHARACTER_BASE,
             visual_element::{VisualElement, VisualElementKind},
         },
+        dialogue::DialogueScene,
         script_def::{
             character::{self},
             env::CHARACTER_LS,
@@ -41,7 +42,7 @@ pub struct CharactersStage {
     character_ves_anim_map: RefCell<VeTypedAnimationMap>,
     /// `fade_in` / `fade_out` 后下一帧为其余角色补布局位移动画。
     pending_layout_duration: RefCell<Option<Duration>>,
-    // 一次session中,不参与布局补位机制的character 
+    // 一次session中,不参与布局补位机制的character
     layout_skip_ves: RefCell<HashSet<String>>,
 }
 
@@ -59,19 +60,11 @@ impl CharactersStage {
         let slide_px = i32::from(CHARACTER_FADE_IN_SLIDE_PX);
 
         let mut anim_map = self.character_ves_anim_map.borrow_mut();
-        anim_map.insert_ani(
-            &ve_name,
-            {
-                let mut offset_ani = OffsetShift::default();
-                offset_ani.begin(
-                    (slide_px, 0),
-                    (0, 0),
-                    duration_secs,
-                    CHARACTER_LAYOUT_CURVE,
-                );
-                offset_ani
-            },
-        )?;
+        anim_map.insert_ani(&ve_name, {
+            let mut offset_ani = OffsetShift::default();
+            offset_ani.begin((slide_px, 0), (0, 0), duration_secs, CHARACTER_LAYOUT_CURVE);
+            offset_ani
+        })?;
         anim_map.insert_ani(&ve_name, AniAlpha::new(0.0, 1.0, duration))?;
         drop(anim_map);
 
@@ -80,16 +73,67 @@ impl CharactersStage {
         Ok(ls_id)
     }
 
-    pub fn export_character_offset(&mut self, ctx: &ContextRef, character: &TableRef, direction: &String, distance: i64, duration: Duration) -> anyhow::Result<()>{
+    pub fn export_to_face(
+        &mut self,
+        ctx: &ContextRef,
+        character: &TableRef,
+        old_stand_path: &String,
+        new_stand_path: &String,
+        duration: Duration,
+    ) -> anyhow::Result<()> {
+        let ls_id = find_character_ls_id(ctx, character)?;
+        let ve_name = format!("character_{ls_id}");
+        self.character_ves_anim_map.borrow_mut().insert_ani(
+            &ve_name,
+            AniImgTrans {
+                anim_time: duration,
+                old_image: Some(old_stand_path.into()),
+                new_image: Some(new_stand_path.into()),
+                run_time: Duration::ZERO,
+            },
+        )
+    }
+
+    pub fn export_character_offset(
+        &mut self,
+        ctx: &ContextRef,
+        character: &TableRef,
+        direction: &ShiftDirection,
+        distance: i64,
+        duration: Duration,
+    ) -> anyhow::Result<()> {
         let ls_id = find_character_ls_id(ctx, character)?;
         let ve_name = format!("character_{ls_id}");
         let duration_secs = duration.as_secs_f64();
         let mut anim_mp = self.character_ves_anim_map.borrow_mut();
-        anim_mp.insert_ani(&ve_name, {
-            let mut offset_ani = OffsetShift::default();
-            offset_ani.begin((0, 0), target, duration_secs, curve);
-        })
 
+        let ani = anim_mp.get_ani_mut::<OffsetShift>(&ve_name);
+        match ani {
+            Ok(offset_ani) => {
+                let target_offset = direction.apply(offset_ani.target_offset, distance);
+                tracing::info!("{ve_name} has pre offset ani, begin from {:?} to {:?}", offset_ani.target_offset, target_offset);
+                offset_ani.begin(
+                    offset_ani.target_offset,
+                    target_offset,
+                    duration_secs,
+                    CHARACTER_LAYOUT_CURVE,
+                );
+            }
+            Err(_) => {
+                anim_mp.insert_ani(&ve_name, {
+                    tracing::info!("{ve_name} no pre offset ani, begin from 0,0");
+                    let target_offset = direction.apply((0, 0), distance);
+                    let mut offset_ani = OffsetShift::default();
+                    offset_ani.begin(
+                        offset_ani.target_offset,
+                        target_offset,
+                        duration_secs,
+                        CHARACTER_LAYOUT_CURVE,
+                    );
+                    offset_ani
+                })?;
+            }
+        };
         Ok(())
     }
 
@@ -173,13 +217,6 @@ impl CharactersStage {
             .get(ve_name)
             .is_some_and(|anims| anims.values().any(|anim| anim.is_animing()))
     }
-
-    fn prune_finished_character_anims(&self) {
-        self.character_ves_anim_map.borrow_mut().retain(|_, anims| {
-            anims.retain(|_, anim| anim.is_indeterminate() || anim.is_animing());
-            !anims.is_empty()
-        });
-    }
 }
 
 impl Behaviour for CharactersStage {
@@ -242,12 +279,14 @@ impl Behaviour for CharactersStage {
             self.schedule_layout_rect_moves(elements, &desired, dur, &skip)?;
         }
 
-        for ve in elements.iter_mut().filter(|ve| ve.name.starts_with("character_")) {
+        for ve in elements
+            .iter_mut()
+            .filter(|ve| ve.name.starts_with("character_"))
+        {
             self.apply_character_anims(ve)?;
         }
 
         if character_num == 0 {
-            self.prune_finished_character_anims();
             return Ok(());
         }
 
@@ -257,12 +296,9 @@ impl Behaviour for CharactersStage {
                 ve.z_index = Z_CHARACTER_BASE + ls_id as i32;
                 if !self.character_ve_has_active_anims(&ve_name) {
                     ve.rect = rect;
-                    ve.offset = (0, 0);
-                }
-                if let VisualElementKind::Image { source: current } = &mut ve.kind {
-                    *current = source;
-                } else {
-                    ve.kind = VisualElementKind::Image { source };
+                    if let VisualElementKind::Image { source: current } = &mut ve.kind {
+                        *current = source;
+                    }
                 }
                 self.apply_character_anims(ve)?;
             } else {
@@ -284,7 +320,6 @@ impl Behaviour for CharactersStage {
                 elements.push(ve);
             }
         }
-        self.prune_finished_character_anims();
         Ok(())
     }
 
@@ -381,7 +416,10 @@ fn find_or_add_character_in_ls(ctx: &ContextRef, character: &TableRef) -> anyhow
 fn read_character_entries(
     ctx: &tmj_core::script::ContextRef,
 ) -> anyhow::Result<Vec<(i64, ScriptValue)>> {
-    let character_ls = CharactersStage::default().get_bind_vars(ctx).pop().unwrap()?;
+    let character_ls = CharactersStage::default()
+        .get_bind_vars(ctx)
+        .pop()
+        .unwrap()?;
     let character_ls = character_ls
         .as_table_or_resolve(ctx)
         .ok_or(anyhow::anyhow!("{} should be table", CHARACTER_LS))?;

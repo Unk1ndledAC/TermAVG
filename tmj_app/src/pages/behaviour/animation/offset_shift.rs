@@ -17,6 +17,35 @@ fn lerp_offset(a: (i32, i32), b: (i32, i32), t: f32) -> (i32, i32) {
     (lerp_i32(a.0, b.0, t), lerp_i32(a.1, b.1, t))
 }
 
+#[derive(strum::EnumString, strum::Display,)]
+pub enum ShiftDirection {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+impl ShiftDirection {
+    pub fn apply(&self, begin: (i32, i32), distance: i64) -> (i32, i32) {
+        let distance = distance as i32;
+        match self {
+            ShiftDirection::Up => {
+                (begin.0, begin.1 - distance)
+            }
+            ShiftDirection::Down => {
+
+                (begin.0, begin.1 + distance)
+            }
+            ShiftDirection::Left => {
+                (begin.0 - distance, begin.1)
+            }
+            ShiftDirection::Right => {
+                (begin.0 + distance, begin.1)
+            },
+        }
+    }
+}
+
 /// 在 `anim_time` 内将 `VisualElement.offset` 从 `start_offset` 插值到 `target_offset`。
 #[derive(TypeName, Default)]
 pub struct OffsetShift {

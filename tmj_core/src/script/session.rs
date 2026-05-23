@@ -32,6 +32,10 @@ impl SessionExecutor {
         }
     }
 
+    pub fn any_executor_waiting(&self) -> bool {
+        self.task_queue.any_executor_waiting()
+    }
+
     /// 执行命令逻辑
     pub fn step(&mut self, context: &Rc<RefCell<ScriptContext>>) -> SessionStatus {
         if self.is_completed {
@@ -81,7 +85,7 @@ impl SessionExecutor {
     }
 
     pub fn is_paused(&self) -> bool {
-        self.task_queue.is_paused()
+        self.task_queue.is_blocked()
     }
 
     pub fn blocking_wait_condition(&self) -> Option<WaitCondition> {
@@ -96,6 +100,6 @@ impl SessionExecutor {
         if self.is_completed {
             return;
         }
-        self.task_queue.skip_blocking_waits_with_buffer(buffer_secs);
+        self.task_queue.skip_time_waits_with_buffer(buffer_secs);
     }
 }

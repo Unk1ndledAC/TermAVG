@@ -8,11 +8,11 @@ use ratatui::{buffer::Cell, style::Color, widgets::Widget};
 use tmj_core::{img::shape::Pic, script::TypeName};
 
 use crate::{
-    art::{
-        halfblock::mix_into_cell,
-        theme,
+    art::{halfblock::mix_into_cell, theme},
+    pages::behaviour::{
+        animation::{Animation, AnyAnimation},
+        visual_element::VisualElementKind,
     },
-    pages::behaviour::{animation::Animation, visual_element::VisualElementKind},
 };
 
 #[derive(TypeName, Default)]
@@ -22,6 +22,7 @@ pub struct AniImgTrans {
     pub new_image: Option<PathBuf>,
     pub run_time: time::Duration,
 }
+impl AnyAnimation for AniImgTrans {}
 
 impl AniImgTrans {
     fn draw_image(
@@ -59,6 +60,19 @@ impl Animation for AniImgTrans {
         };
 
         evalued_alpha = evalued_alpha.clamp(0.0, 1.0);
+        if evalued_alpha == 0.0 && self.old_image.is_some() {
+            ve.kind = VisualElementKind::Image {
+                source: self.old_image.clone().unwrap().to_str().unwrap().to_string(),
+            };
+            return Ok(());
+        }
+
+        if evalued_alpha == 1.0 && self.new_image.is_some() {
+            ve.kind = VisualElementKind::Image {
+                source: self.new_image.clone().unwrap().to_str().unwrap().to_string(),
+            };
+            return Ok(());
+        }
 
         if let VisualElementKind::Custom { drawer } = &mut ve.kind {
             let cur_img_path = self.new_image.clone();

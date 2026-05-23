@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::HashMap, fs, rc::Rc};
 use tmj_core::{
@@ -7,10 +8,13 @@ use tmj_core::{
 
 use crate::{
     pages::{
-        behaviour::{CharactersStage, with_behaviour_mut_from_ctx_rc},
+        behaviour::{
+            CharactersStage, animation::offset_shift::ShiftDirection,
+            with_behaviour_mut_from_ctx_rc,
+        },
         pop_items::DialogueRecord,
     },
-    utils::script_args::{parse_duration, parse_required_arg, parse_required_member},
+    utils::script_args::{parse_arg, parse_duration, parse_member, parse_required_arg, parse_required_member},
 };
 
 script_sym!(CHARACTER, Type, "可构造的角色类型");
@@ -33,7 +37,17 @@ script_sym!(_VOICES, Member, "语音表");
 script_sym!(FACE, Member, "当前表情名");
 script_sym!(SAY, Function, "角色说话（立绘、文本、语音）");
 script_sym!(FADE_IN, Function, "入场：自右向左滑入 8 格并淡入到场上位置");
-script_sym!(FADE_OUT, Function, "退场：淡出并从场上列表移除，其余角色平滑移位");
+script_sym!(TO_FACE, Function, "切换表情，带过度动画");
+script_sym!(UP, Function, "添加向上偏移动画");
+script_sym!(DOWN, Function, "添加向下偏移动画");
+script_sym!(LEFT, Function, "添加向左偏移动画");
+script_sym!(RIGHT, Function, "添加向右偏移动画");
+
+script_sym!(
+    FADE_OUT,
+    Function,
+    "退场：淡出并从场上列表移除，其余角色平滑移位"
+);
 
 impl RegistableType for Character {
     fn create_class_table(
@@ -105,6 +119,7 @@ impl RegistableType for Character {
                 SAY,
                 ScriptValue::function(SAY, move |ctx, args| {
                     let text = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+                    let speed = parse_arg(&args, 1, 20.0, ScriptValue::to_number);
                     let speaker_name =
                         parse_required_member(&table_clone, DISPLAY, ScriptValue::as_string)?;
                     let cur_face =
@@ -114,9 +129,7 @@ impl RegistableType for Character {
                         .borrow()
                         .resolve_table_value(&faces_sv)
                         .ok()
-                        .and_then(|faces_tbl| {
-                            faces_tbl.borrow().get(&cur_face, None)
-                        })
+                        .and_then(|faces_tbl| faces_tbl.borrow().get(&cur_face, None))
                         .and_then(|v| v.as_str().map(str::to_string))
                         .unwrap_or_else(|| {
                             tracing::warn!("got character face img failed; set face none");
@@ -138,7 +151,7 @@ impl RegistableType for Character {
                         crate::pages::behaviour::dialogue_frame::FrameBehaviour,
                         _,
                     >(ctx, |b| {
-                        b.export_say(speaker_name.clone(), face_path, text.to_string());
+                        b.export_say(speaker_name.clone(), face_path, text.to_string(), speed);
                     })?;
 
                     Ok(ScriptValue::nil())
@@ -170,6 +183,140 @@ impl RegistableType for Character {
                     let duration = parse_duration(&args, 0, 0.2);
                     with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
                         b.export_fade_out(ctx, &table_clone, duration)
+                    })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                TO_FACE,
+                ScriptValue::function(TO_FACE, move |ctx, args| {
+                    let face_name = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+                    let old_face_name = parse_required_member(&table_clone, FACE, ScriptValue::as_string)?;
+                    let duration = parse_duration(&args, 1, 0.2);
+
+                    let old_path = parse_required_member(
+                        &table_clone,
+                        format!("{_STANDS}.{old_face_name}"),
+                        ScriptValue::as_string,
+                    )
+                    .context("get old stand path field");
+
+                    if old_path.is_err() {
+                        tracing::warn!("{old_path:?} to_face pre face no stand image, skip cmd");
+                        return Ok(ScriptValue::Nil)
+                    }
+
+                    let new_path = parse_required_member(
+                        &table_clone,
+                        format!("{_STANDS}.{face_name}"),
+                        ScriptValue::as_string,
+                    )
+                    .context("get new stand path field");
+
+                    if new_path.is_err() {
+                        tracing::warn!("{new_path:?} to_face new face no stand image, skip cmd");
+                        return Ok(ScriptValue::Nil)
+                    }
+                    table_clone
+                        .borrow_mut()
+                        .set(FACE, face_name.into_script_val(), None);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        let _ = b.export_to_face(ctx, &table_clone, &old_path.unwrap(), &new_path.unwrap(), duration);
+                    })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                UP,
+                ScriptValue::function(UP, move |ctx, args| {
+                    let direction = ShiftDirection::Up;
+                    let distance = parse_required_arg(&args, 0, ScriptValue::as_int)?;
+                    let duration = parse_duration(&args, 1, 0.2);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        b.export_character_offset(
+                            &ctx,
+                            &table_clone,
+                            &direction,
+                            distance,
+                            duration,
+                        );
+                    })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                DOWN,
+                ScriptValue::function(DOWN, move |ctx, args| {
+                    let direction = ShiftDirection::Down;
+                    let distance = parse_required_arg(&args, 0, ScriptValue::as_int)?;
+                    let duration = parse_duration(&args, 1, 0.2);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        b.export_character_offset(
+                            &ctx,
+                            &table_clone,
+                            &direction,
+                            distance,
+                            duration,
+                        );
+                    })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                LEFT,
+                ScriptValue::function(LEFT, move |ctx, args| {
+                    let direction = ShiftDirection::Left;
+                    let distance = parse_required_arg(&args, 0, ScriptValue::as_int)?;
+                    let duration = parse_duration(&args, 1, 0.2);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        b.export_character_offset(
+                            &ctx,
+                            &table_clone,
+                            &direction,
+                            distance,
+                            duration,
+                        );
+                    })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                RIGHT,
+                ScriptValue::function(RIGHT, move |ctx, args| {
+                    let direction = ShiftDirection::Right;
+                    let distance = parse_required_arg(&args, 0, ScriptValue::as_int)?;
+                    let duration = parse_duration(&args, 1, 0.2);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        b.export_character_offset(
+                            &ctx,
+                            &table_clone,
+                            &direction,
+                            distance,
+                            duration,
+                        );
                     })?;
                     Ok(ScriptValue::nil())
                 }),

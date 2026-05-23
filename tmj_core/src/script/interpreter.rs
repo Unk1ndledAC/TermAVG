@@ -103,7 +103,14 @@ impl Interpreter {
             .map_or(false, |s| !s.is_completed())
     }
 
-    pub fn is_waiting(&self) -> bool {
+    /// 此处指是否有处于等待中的cmd executor，而不是询问整个session的执行被阻塞了
+    pub fn is_any_executor_waiting(&self) -> bool {
+        if let Some(s) = &self.current_session {
+            return s.any_executor_waiting();
+        }
+        false
+    }
+    pub fn is_blocking(&self) -> bool {
         matches!(self.status, InterpreterStatus::Waiting(_))
     }
 
@@ -186,7 +193,7 @@ impl Interpreter {
 
     /// 处理输入事件 (有事件时调用)
     pub fn handle_event(&mut self, event: InputEvent) -> InterpreterStatus {
-        if !self.is_waiting() {
+        if !self.is_blocking() {
             return self.status.clone();
         }
 

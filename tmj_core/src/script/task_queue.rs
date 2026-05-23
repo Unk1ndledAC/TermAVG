@@ -27,7 +27,7 @@ pub enum QueueStatus {
 pub struct TaskQueue {
     pending_tasks: VecDeque<TaskItem>,
     active_tasks: Vec<TaskItem>,
-    paused: bool,
+    blocked: bool,
     blocking_wait: Option<WaitCondition>,
     task_counter: usize,
 }
@@ -37,7 +37,7 @@ impl TaskQueue {
         TaskQueue {
             pending_tasks: VecDeque::new(),
             active_tasks: Vec::new(),
-            paused: false,
+            blocked: false,
             blocking_wait: None,
             task_counter: 0,
         }
@@ -72,13 +72,13 @@ impl TaskQueue {
 
         self.active_tasks.retain(|task| !task.executor.is_completed());
 
-        if any_completed && self.paused {
+        if any_completed && self.blocked {
             let has_blocking_wait = self.active_tasks
                 .iter()
                 .any(|task| task.executor.is_blocking() && task.executor.is_waiting());
 
             if !has_blocking_wait {
-                self.paused = false;
+                self.blocked = false;
                 self.blocking_wait = None;
             }
         }
@@ -103,13 +103,13 @@ impl TaskQueue {
 
         self.active_tasks.retain(|task| !task.executor.is_completed());
 
-        if any_resumed && self.paused {
+        if any_resumed && self.blocked {
             let has_blocking_wait = self.active_tasks
                 .iter()
                 .any(|task| task.executor.is_blocking() && task.executor.is_waiting());
 
             if !has_blocking_wait {
-                self.paused = false;
+                self.blocked = false;
                 self.blocking_wait = None;
             }
         }
@@ -121,13 +121,13 @@ impl TaskQueue {
     pub fn step(&mut self, context: &Rc<RefCell<ScriptContext>>) -> QueueStatus {
         self.step_active_tasks(context);
 
-        if self.paused {
+        if self.blocked {
             if let Some(ref condition) = self.blocking_wait {
                 return QueueStatus::Blocked(condition.clone());
             }
         }
 
-        if !self.paused {
+        if !self.blocked {
             while let Some(mut task) = self.pending_tasks.pop_front() {
                 match task.executor.step(context) {
                     ExecuteStatus::Completed => {
@@ -135,7 +135,7 @@ impl TaskQueue {
                     }
                     ExecuteStatus::Waiting(condition) => {
                         if task.executor.is_blocking() {
-                            self.paused = true;
+                            self.blocked = true;
                             self.blocking_wait = Some(condition.clone());
                             self.active_tasks.push(task);
                             return QueueStatus::Blocked(condition);
@@ -172,8 +172,12 @@ impl TaskQueue {
         self.pending_tasks.is_empty() && self.active_tasks.is_empty()
     }
 
-    pub fn is_paused(&self) -> bool {
-        self.paused
+    pub fn is_blocked(&self) -> bool {
+        self.blocked
+    }
+
+    pub fn any_executor_waiting(&self) -> bool {
+        self.active_tasks.iter().any(|task| task.executor.is_waiting())
     }
 
     pub fn blocking_wait_condition(&self) -> Option<WaitCondition> {
@@ -189,12 +193,15 @@ impl TaskQueue {
             })
     }
 
-    /// 将阻塞型 executor 的等待缩短到约一帧，便于用户跳过后续继续执行。
-    pub fn skip_blocking_waits_with_buffer(&mut self, buffer_secs: f64) {
+    /// 将 executor 的等待缩短到约一帧，便于用户跳过后续继续执行。
+    pub fn skip_time_waits_with_buffer(&mut self, buffer_secs: f64) {
         let mut changed = false;
         for task in &mut self.active_tasks {
-            if task.executor.is_blocking() && task.executor.is_waiting() {
-                changed |= task.executor.skip_wait_with_buffer(buffer_secs);
+            if task.executor.is_waiting() {
+                let task_changed = task.executor.skip_wait_with_buffer(buffer_secs);
+                if task.executor.is_blocking() {
+                    changed |= task_changed;
+                }
             }
         }
         if changed {
@@ -208,7 +215,7 @@ impl TaskQueue {
     pub fn clear(&mut self) {
         self.pending_tasks.clear();
         self.active_tasks.clear();
-        self.paused = false;
+        self.blocked = false;
         self.blocking_wait = None;
     }
 }
