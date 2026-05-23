@@ -268,6 +268,14 @@ impl Table {
         self.int_keys.insert(index, value);
     }
 
+    pub fn clear_int_keys(&mut self) {
+        self.int_keys.clear();
+    }
+
+    pub fn remove_int(&mut self, index: i64) -> Option<ScriptValue> {
+        self.int_keys.remove(&index)
+    }
+
     // ========== 数组式操作 ==========
     pub fn push(&mut self, value: ScriptValue) {
         let next_index = self.int_keys.len() as i64;

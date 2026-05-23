@@ -5,7 +5,13 @@ use tmj_core::{
     script::{IntoScriptValue, RegistableType, ScriptValue, TabelGet, Table, TypeName, script_sym},
 };
 
-use crate::pages::{behaviour::with_behaviour_mut_from_ctx_rc, pop_items::DialogueRecord};
+use crate::{
+    pages::{
+        behaviour::{CharactersStage, with_behaviour_mut_from_ctx_rc},
+        pop_items::DialogueRecord,
+    },
+    utils::script_args::{parse_duration, parse_required_arg, parse_required_member},
+};
 
 script_sym!(CHARACTER, Type, "可构造的角色类型");
 /// 创建新的 Character Table
@@ -26,19 +32,19 @@ script_sym!(_FACES, Member, "表情名列表");
 script_sym!(_VOICES, Member, "语音表");
 script_sym!(FACE, Member, "当前表情名");
 script_sym!(SAY, Function, "角色说话（立绘、文本、语音）");
+script_sym!(FADE_IN, Function, "入场：自右向左滑入 8 格并淡入到场上位置");
+script_sym!(FADE_OUT, Function, "退场：淡出并从场上列表移除，其余角色平滑移位");
 
 impl RegistableType for Character {
     fn create_class_table(
         ctx: &mut tmj_core::script::ScriptContext,
         args: Vec<ScriptValue>,
     ) -> Table {
-        match args.get(0) {
-            Some(setting_file) if setting_file.is_string() => {
-                // 1. deserialize rust character
-                let setting_file = setting_file.as_str().unwrap();
-                let file = pathes::path(setting_file);
+        match parse_required_arg(&args, 0, ScriptValue::as_string) {
+            Ok(setting_file) => {
+                let file = pathes::path(&setting_file);
                 if !file.is_file() {
-                    tracing::error!("{} is not exist", setting_file);
+                    tracing::error!("{} is not exist", &setting_file);
                     let id = ctx.alloc_table_id();
                     return Table::with_tuid(id);
                 }
@@ -82,12 +88,8 @@ impl RegistableType for Character {
                 table.set(FACE, character._current_face.into_script_val(), None);
                 table
             }
-            None => {
-                tracing::error!("character args error: No args ");
-                Table::with_tuid(ctx.alloc_table_id())
-            }
-            _ => {
-                tracing::error!("character args error: wrong arg 0");
+            Err(e) => {
+                tracing::error!("character args error: {e}");
                 Table::with_tuid(ctx.alloc_table_id())
             }
         }
@@ -102,29 +104,26 @@ impl RegistableType for Character {
             table_rc.borrow_mut().set(
                 SAY,
                 ScriptValue::function(SAY, move |ctx, args| {
-                    if args.is_empty() {
-                        anyhow::bail!("say requires text argument".to_string());
-                    }
-                    let text = args[0].as_str().unwrap_or("");
-                    let speaker_name = table_clone.get(DISPLAY)?;
-
-                    tracing::info!("{:?} is saying {}", speaker_name.as_str().unwrap(), text);
-                    let cur_face = table_clone.get(FACE)?;
+                    let text = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+                    let speaker_name =
+                        parse_required_member(&table_clone, DISPLAY, ScriptValue::as_string)?;
+                    let cur_face =
+                        parse_required_member(&table_clone, FACE, ScriptValue::as_string)?;
                     let faces_sv = table_clone.get(_FACES)?;
                     let face_path = ctx
                         .borrow()
                         .resolve_table_value(&faces_sv)
                         .ok()
                         .and_then(|faces_tbl| {
-                            faces_tbl.borrow().get(cur_face.as_str().unwrap(), None)
+                            faces_tbl.borrow().get(&cur_face, None)
                         })
+                        .and_then(|v| v.as_str().map(str::to_string))
                         .unwrap_or_else(|| {
                             tracing::warn!("got character face img failed; set face none");
-                            ScriptValue::String("".into())
+                            String::new()
                         });
 
-                    let speaker_name = speaker_name.as_string().unwrap();
-                    let face_path = face_path.as_string().unwrap();
+                    tracing::info!("{speaker_name} is saying {text}");
 
                     crate::pages::pop_items::HISTORY_LS
                         .lock()
@@ -139,9 +138,39 @@ impl RegistableType for Character {
                         crate::pages::behaviour::dialogue_frame::FrameBehaviour,
                         _,
                     >(ctx, |b| {
-                        b.export_say(speaker_name, face_path, text.to_string());
+                        b.export_say(speaker_name.clone(), face_path, text.to_string());
                     })?;
 
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                FADE_IN,
+                ScriptValue::function(FADE_IN, move |ctx, args| {
+                    let duration = parse_duration(&args, 0, 0.6);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        b.export_fade_in(ctx, &table_clone, duration)
+                    })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
+
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                FADE_OUT,
+                ScriptValue::function(FADE_OUT, move |ctx, args| {
+                    let duration = parse_duration(&args, 0, 0.2);
+                    with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
+                        b.export_fade_out(ctx, &table_clone, duration)
+                    })?;
                     Ok(ScriptValue::nil())
                 }),
                 Some(ctx),

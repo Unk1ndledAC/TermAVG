@@ -1,6 +1,12 @@
 use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
-use crate::pages::{behaviour::{BackgroundBehaviour, with_behaviour_mut_from_ctx_rc}, script_def::BaseVariable};
+use crate::{
+    pages::{
+        behaviour::{BackgroundBehaviour, with_behaviour_mut_from_ctx_rc},
+        script_def::BaseVariable,
+    },
+    utils::script_args::{parse_arg, parse_duration, parse_required_arg},
+};
 
 script_sym!(BG, Type, "背景全局对象");
 script_sym!(SET, Function, "立即切换背景图");
@@ -30,7 +36,7 @@ impl BaseVariable for VBg {
             }
             with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_hide_edge();
-            });
+            })?;
 
             Ok(ScriptValue::Nil)
         });
@@ -45,42 +51,27 @@ impl BaseVariable for VBg {
             }
             with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_show_edge();
-            });
+            })?;
 
             Ok(ScriptValue::Nil)
         });
 
         let _ = ctx.set_table_func(BG, SET, |ctx, args| {
-            let new_img_path = args.first().unwrap().clone();
-            if !new_img_path.is_string() {
-                anyhow::bail!("bg.set args should be string first");
-            }
+            let new_img_path = parse_required_arg(&args, 0, ScriptValue::as_string)?;
             {
                 let mut c = ctx.borrow_mut();
-                c.set_table_member(BG, M_IMAGE, new_img_path.clone())
+                c.set_table_member(BG, M_IMAGE, ScriptValue::String(new_img_path.clone()))
                     .map_err(|e| anyhow::anyhow!(e))?;
-
             }
-            let new_img_path = new_img_path.as_string().unwrap().to_string();
             with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_set(new_img_path);
-            });
+            })?;
             Ok(ScriptValue::Nil)
         });
 
         let _ = ctx.set_table_func(BG, TRANS_TO, |ctx, args| {
-            let new_path = args
-                .first()
-                .and_then(|v| v.as_str())
-                .ok_or(anyhow::anyhow!("bg.trans_to requires (new_image, duration_sec)"))?
-                .to_string();
-            let duration_sec = args
-                .get(1)
-                .and_then(|v| v.to_number())
-                .filter(|d| d.is_finite() && *d > 0.0)
-                .ok_or(anyhow::anyhow!(
-                    "bg.trans_to second arg should be a positive number (seconds)"
-                ))?;
+            let new_path = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+            let duration_sec = parse_arg(&args, 1, 0.6, ScriptValue::to_number);
 
             let table = ctx
                 .borrow()
@@ -95,7 +86,7 @@ impl BaseVariable for VBg {
 
             with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
                 b.export_trans_to(new_path, duration_sec);
-            });
+            })?;
             Ok(ScriptValue::Nil)
         });
 

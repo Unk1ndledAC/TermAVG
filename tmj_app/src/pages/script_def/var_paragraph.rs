@@ -1,8 +1,11 @@
 use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
-use crate::pages::{
-    behaviour::{ParagraphBehaviour, with_behaviour_mut_from_ctx_rc},
-    script_def::BaseVariable,
+use crate::{
+    pages::{
+        behaviour::{ParagraphBehaviour, with_behaviour_mut_from_ctx_rc},
+        script_def::BaseVariable,
+    },
+    utils::script_args::{parse_member, parse_required_arg},
 };
 
 script_sym!(PARAGRAPH, Type, "旁白/段落全局对象");
@@ -59,28 +62,26 @@ impl BaseVariable for VParagraph {
         {
             let _ = ctx
                 .set_table_func(PARAGRAPH, PRINT, |ctx, args| {
-                    let text = args
-                        .first()
-                        .and_then(|x| x.as_str())
-                        .ok_or(anyhow::anyhow!("paragraph.print requires text argument"))?;
+                    let text = parse_required_arg(&args, 0, ScriptValue::as_string)?;
                     let paragraph = ctx
                         .borrow()
                         .get_global_val(PARAGRAPH)
                         .ok_or(anyhow::anyhow!("paragraph not found"))?
                         .as_table_or_resolve(ctx)
                         .ok_or(anyhow::anyhow!("paragraph is not table"))?;
-                    let old_content = paragraph
-                        .borrow()
-                        .get(M_CONTENT, None)
-                        .and_then(|x| x.as_str().map(|s| s.to_string()))
-                        .unwrap_or_default();
+                    let old_content = parse_member(
+                        &paragraph,
+                        M_CONTENT,
+                        String::new(),
+                        |v| v.as_str().map(str::to_string),
+                    );
                     with_behaviour_mut_from_ctx_rc::<ParagraphBehaviour, _>(
                         ctx,
                         |b: &mut ParagraphBehaviour| {
                             b.export_print(&text.to_string());
                         },
-                    );
-                    let content = old_content + text;
+                    )?;
+                    let content = format!("{old_content}{text}");
                     paragraph
                         .borrow_mut()
                         .set(M_CONTENT, ScriptValue::string(content), None);
@@ -92,10 +93,7 @@ impl BaseVariable for VParagraph {
         {
             let _ = ctx
                 .set_table_func(PARAGRAPH, NEW, |ctx, args| {
-                    let text = args
-                        .first()
-                        .and_then(|x| x.as_str())
-                        .ok_or(anyhow::anyhow!("paragraph.new requires text argument"))?;
+                    let text = parse_required_arg(&args, 0, ScriptValue::as_string)?;
                     let paragraph = ctx
                         .borrow()
                         .get_global_val(PARAGRAPH)
@@ -104,7 +102,6 @@ impl BaseVariable for VParagraph {
                         .ok_or(anyhow::anyhow!("paragraph is not table"))?;
                     {
                         let mut p = paragraph.borrow_mut();
-                        // Clear current page immediately, then push next-frame content via once command.
                         p.set(M_CONTENT, ScriptValue::string(""), None);
                         p.set(M_VISIBLE, ScriptValue::bool(true), None);
                     }
@@ -113,7 +110,7 @@ impl BaseVariable for VParagraph {
                         |b: &mut ParagraphBehaviour| {
                             b.export_new(&text.to_string());
                         },
-                    );
+                    )?;
                     paragraph
                         .borrow_mut()
                         .set(M_CONTENT, ScriptValue::string(text), None);
@@ -139,7 +136,7 @@ impl BaseVariable for VParagraph {
                         |b: &mut ParagraphBehaviour| {
                             b.export_clear();
                         },
-                    );
+                    )?;
                     Ok(ScriptValue::Table(paragraph))
                 })
                 .map_err(|e| anyhow::anyhow!(e))?;

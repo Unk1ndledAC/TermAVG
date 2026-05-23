@@ -96,12 +96,8 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
     let _ = regist_base_gvar(&mut ctx);
     {
         ctx.set_global_func(SAVE_TO, |c, args| {
-            let table = args[0]
-                .as_table_or_resolve(c)
-                .ok_or(anyhow::anyhow!("args 0 is not a table or handle"))?;
-            let target_path = args[1]
-                .as_string()
-                .ok_or(anyhow::anyhow!("args 1 is not str"))?;
+            let table = parse_required_arg(&args, 0, |v| v.as_table_or_resolve(c))?;
+            let target_path = parse_required_arg(&args, 1, ScriptValue::as_string)?;
             let ct = toml::to_string(&table.into_script_val())?;
             let target_path = pathes::path(target_path);
             std::fs::write(target_path, ct)?;
@@ -133,7 +129,7 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
 
     {
         ctx.set_global_func("create_default_character", |_ctx, args| {
-            let path = args[0].as_string().unwrap();
+            let path = parse_required_arg(&args, 0, ScriptValue::as_string)?;
             let character = Character::default();
             let ct = toml::to_string(&character)?;
             let path = pathes::path(path);
@@ -144,11 +140,8 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
 
     {
         ctx.set_global_func(SEE, |_ctx, args| {
-            let name = args
-                .first()
-                .and_then(|x| x.as_str())
-                .ok_or(anyhow::anyhow!("see requires visual element name string"))?;
-            crate::pages::dialogue::see_visual_element(name)?;
+            let name = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+            crate::pages::dialogue::see_visual_element(&name)?;
             Ok(ScriptValue::Nil)
         });
     }
@@ -166,15 +159,10 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
 
     {
         ctx.set_global_func(LOG, |c, args| {
-            let path = args
-                .first()
-                .ok_or(anyhow::anyhow!("log requires path argument"))?;
-            let path = path
-                .as_expression()
-                .or_else(|| path.as_str().map(|x| x.to_string()))
-                .ok_or(anyhow::anyhow!(
-                    "log arg should be expression or string path"
-                ))?;
+            let path = parse_required_arg(&args, 0, |v| {
+                v.as_expression()
+                    .or_else(|| v.as_str().map(|x| x.to_string()))
+            })?;
 
             let value = c
                 .borrow()

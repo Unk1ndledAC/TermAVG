@@ -49,7 +49,7 @@ fn visual_element_debug_dump(ve: &VisualElement) -> String {
         VisualElementKind::Custom { .. } => "Custom".to_string(),
     };
     format!(
-        "name={:?}, visible={}, z_index={}, rect=({}, {}, {}, {}), clear_before_draw={}, use_typewriter={}, typewriter_speed={}, kind={}",
+        "name={:?}, visible={}, z_index={}, rect=({}, {}, {}, {}), offset=({}, {}), clear_before_draw={}, use_typewriter={}, typewriter_speed={}, kind={}",
         ve.name,
         ve.visible,
         ve.z_index,
@@ -57,6 +57,8 @@ fn visual_element_debug_dump(ve: &VisualElement) -> String {
         ve.rect.y,
         ve.rect.width,
         ve.rect.height,
+        ve.offset.0,
+        ve.offset.1,
         ve.clear_before_draw,
         ve.use_typewriter,
         ve.typewriter_speed,

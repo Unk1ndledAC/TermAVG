@@ -7,7 +7,7 @@ use tmj_core::{
 use crate::{
     SETTING,
     pages::{behaviour::{LayerBehaviour, with_behaviour_mut, with_behaviour_mut_from_ctx_rc}, script_def::{layer, var_layer_ls}},
-    utils::script_args::parse_arg,
+    utils::script_args::{parse_arg, parse_duration},
 };
 
 script_sym!(LAYER, Type, "可构造的动态图层类型");
@@ -47,7 +47,7 @@ impl RegistableType for Layer {
         table.set(M_VISIBLE, false.into_script_val(), None);
         table.set(Z_DEEP, z_deep.into_script_val(), None);
         table.set(LAYER_TYPE, layer_type.clone().into_script_val(), None);
-        table.set(DATA, data_str.into_script_val(), None);
+        table.set(DATA, data_str.clone().into_script_val(), None);
         table.set(X, x.into_script_val(), None);
         table.set(Y, y.into_script_val(), None);
         table.set(W, w.into_script_val(), None);
@@ -55,8 +55,7 @@ impl RegistableType for Layer {
 
         match layer_type.as_str() {
             "image" => {
-                let image_path = table.get(DATA, None).unwrap().as_string().unwrap();
-                let image_path = pathes::path(image_path);
+                let image_path = pathes::path(&data_str);
                 if !image_path.is_file() {
                     tracing::error!(
                         "image layer image source path did not exist!: {:?}",
@@ -91,10 +90,10 @@ impl RegistableType for Layer {
                     table_clone
                         .borrow_mut()
                         .set(M_VISIBLE, true.into_script_val(), None);
-                    let duration = parse_arg(&args, 0, 0.2, ScriptValue::to_number);
+                    let duration = parse_duration(&args, 0, 0.2);
                     with_behaviour_mut_from_ctx_rc::<LayerBehaviour, _>(ctx, |b: &mut LayerBehaviour| {
-                        b.export_show(&table_clone, std::time::Duration::from_secs_f64(duration));
-                    });
+                        b.export_show(&table_clone, duration)
+                    })?;
                     Ok(ScriptValue::nil())
                 }),
                 Some(ctx),
@@ -107,10 +106,10 @@ impl RegistableType for Layer {
                     table_clone
                         .borrow_mut()
                         .set(M_VISIBLE, false.into_script_val(), None);
-                    let duration = parse_arg(&args, 0, 0.2, ScriptValue::to_number);
+                    let duration = parse_duration(&args, 0, 0.2);
                     with_behaviour_mut_from_ctx_rc::<LayerBehaviour, _>(ctx, |b: &mut LayerBehaviour| {
-                        b.export_hide(&table_clone, std::time::Duration::from_secs_f64(duration));
-                    });
+                        b.export_hide(&table_clone, duration)
+                    })?;
                     Ok(ScriptValue::nil())
                 }),
                 Some(ctx),

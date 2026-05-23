@@ -1,7 +1,9 @@
 use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
-
-use crate::pages::script_def::BaseVariable;
+use crate::{
+    pages::script_def::BaseVariable,
+    utils::script_args::parse_required_arg,
+};
 
 script_sym!(FRAME, Type, "对话框全局对象");
 script_sym!(VISIBLE, Member, "对话框是否可见");
@@ -54,10 +56,7 @@ impl BaseVariable for VFrame {
         {
             let _ = ctx
                 .set_table_func(FRAME, SET_MODE, |ctx, args| {
-                    let mode = args
-                        .first()
-                        .and_then(|x| x.as_str())
-                        .ok_or(anyhow::anyhow!("frame.set_mode requires mode string"))?;
+                    let mode = parse_required_arg(&args, 0, ScriptValue::as_string)?;
                     let frame = ctx
                         .borrow()
                         .get_global_val(FRAME)

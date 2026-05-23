@@ -1,6 +1,9 @@
 use tmj_core::script::{ScriptValue, Table, TableRef, TypeName, script_sym};
 
-use crate::pages::script_def::{BaseVariable, layer};
+use crate::{
+    pages::script_def::{BaseVariable, layer},
+    utils::script_args::parse_required_table_field,
+};
 
 script_sym!(LAYER_LS, Type, "动态图层列表全局对象");
 
@@ -8,22 +11,14 @@ script_sym!(LAYER_LS, Type, "动态图层列表全局对象");
 pub struct VLayerLs;
 impl VLayerLs {
     pub fn add_layer_ref(ls: TableRef, layer: &Table) -> anyhow::Result<()> {
-        let key = layer
-            .get(layer::NAME, None)
-            .ok_or(anyhow::anyhow!("layer should has name filed"))?
-            .as_string()
-            .unwrap();
+        let key = parse_required_table_field(layer, layer::NAME, None, ScriptValue::as_string)?;
         ls.borrow_mut()
             .set(key, ScriptValue::TableHandle(layer.tuid), None);
         Ok(())
     }
 
     pub fn del_layer_ref(ls: TableRef, layer: &Table) -> anyhow::Result<()> {
-        let key = layer
-            .get(layer::NAME, None)
-            .ok_or(anyhow::anyhow!("layer should has name filed"))?
-            .as_string()
-            .unwrap();
+        let key = parse_required_table_field(layer, layer::NAME, None, ScriptValue::as_string)?;
         ls.borrow_mut().remove(&key);
         Ok(())
     }

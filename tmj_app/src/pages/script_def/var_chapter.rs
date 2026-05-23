@@ -1,10 +1,11 @@
-use std::time::Duration;
-
 use tmj_core::script::{ScriptValue, TypeName, script_sym};
 
-use crate::pages::{
-    behaviour::{ChapterBehaviour, with_behaviour_mut_from_ctx_rc},
-    script_def::BaseVariable,
+use crate::{
+    pages::{
+        behaviour::{ChapterBehaviour, with_behaviour_mut_from_ctx_rc},
+        script_def::BaseVariable,
+    },
+    utils::script_args::{parse_duration, parse_required_arg},
 };
 
 script_sym!(CHAPTER, Type, "章节标题全局对象");
@@ -20,20 +21,11 @@ impl BaseVariable for VChapter {
         {
             let _ = ctx
                 .set_table_func(CHAPTER, SHOW_TITLE, |ctx, args| {
-                    let title = args
-                        .first()
-                        .and_then(|v| v.as_str())
-                        .ok_or(anyhow::anyhow!(
-                            "chapter.show_title requires title string argument"
-                        ))?;
-                    let duration = args
-                        .get(1)
-                        .and_then(|v| v.to_number())
-                        .filter(|d| d.is_finite() && *d >= 0.0)
-                        .unwrap_or(1.0);
+                    let title = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+                    let duration = parse_duration(&args, 1, 1.0);
 
                     with_behaviour_mut_from_ctx_rc::<ChapterBehaviour, _>(ctx, |b| {
-                        b.export_show_title(Duration::from_secs_f64(duration), title.to_string());
+                        b.export_show_title(duration, title.to_string());
                     })?;
 
                     let chapter = ctx
@@ -50,23 +42,11 @@ impl BaseVariable for VChapter {
         {
             let _ = ctx
                 .set_table_func(CHAPTER, SHOW_SUB_TITLE, |ctx, args| {
-                    let subtitle = args
-                        .first()
-                        .and_then(|v| v.as_str())
-                        .ok_or(anyhow::anyhow!(
-                            "chapter.show_sub_title requires subtitle string argument"
-                        ))?;
-                    let duration = args
-                        .get(1)
-                        .and_then(|v| v.to_number())
-                        .filter(|d| d.is_finite() && *d >= 0.0)
-                        .unwrap_or(1.0);
+                    let subtitle = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+                    let duration = parse_duration(&args, 1, 1.0);
 
                     with_behaviour_mut_from_ctx_rc::<ChapterBehaviour, _>(ctx, |b| {
-                        b.export_show_sub_title(
-                            Duration::from_secs_f64(duration),
-                            subtitle.to_string(),
-                        );
+                        b.export_show_sub_title(duration, subtitle.to_string());
                     })?;
 
                     let chapter = ctx

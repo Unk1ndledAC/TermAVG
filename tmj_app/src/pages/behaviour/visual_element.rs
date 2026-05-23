@@ -61,6 +61,8 @@ pub struct VisualElement {
     pub visible: bool,
     pub z_index: i32,
     pub rect: Rect,
+    /// 相对 `rect` 的渲染像素偏移，仅影响绘制位置，不参与布局/动画逻辑。
+    pub offset: (i32, i32),
     pub clear_before_draw: bool,
     pub fill_before_draw: bool,
     pub use_typewriter: bool,
@@ -83,6 +85,7 @@ impl Default for VisualElement {
             visible: true,
             z_index: 0,
             rect: Rect::default(),
+            offset: (0, 0),
             clear_before_draw: false,
             fill_before_draw: false,
             use_typewriter: false,
@@ -212,10 +215,11 @@ impl VisualElement {
     }
 
     fn resolve_render_rect(&self, area: Rect) -> Rect {
-        let offset_rect = self
-            .rect
-            .offset(ratatui::layout::Offset::new(area.x as i32, area.y as i32));
-        offset_rect.intersection(area)
+        let (ox, oy) = self.offset;
+        self.rect
+            .offset(ratatui::layout::Offset::new(area.x as i32, area.y as i32))
+            .offset(ratatui::layout::Offset::new(ox, oy))
+            .intersection(area)
     }
 
     pub fn render(&self, buffer: &mut Buffer, area: Rect) -> anyhow::Result<()> {

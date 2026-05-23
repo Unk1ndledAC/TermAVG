@@ -1,4 +1,6 @@
-use tmj_core::script::{FromCommand, IntoScriptValue, IntoTable, ScriptContext, Table, TypeName, script_sym};
+use tmj_core::script::{FromCommand, IntoScriptValue, IntoTable, ScriptContext, ScriptValue, Table, TypeName, script_sym};
+
+use crate::utils::script_args::parse_required_arg;
 
 script_sym!(CONTENT, Member, "文本对象内容");
 script_sym!(XPOS, Member, "文本对象 X 坐标");
@@ -25,19 +27,17 @@ impl IntoTable for TextObj {
 }
 
 impl FromCommand for TextObj {
-    fn from_script_command(_ctx: &mut ScriptContext, args: Vec<tmj_core::script::ScriptValue>) -> Result<Self, String>
-        where
-            Self: Sized {
-                let len = args.len();
-                if len == 3 && args[0].is_string() && args[1].is_int() && args[2].is_int(){
-                    let content = args[0].as_string().unwrap().clone();
-                    return Ok(TextObj {
-                        content,
-                        ..Self::default()
-                    })
-                } else {
-                    return Err("wrong args".to_string());
-                }
+    fn from_script_command(
+        _ctx: &mut ScriptContext,
+        args: Vec<ScriptValue>,
+    ) -> Result<Self, String> {
+        let content = parse_required_arg(&args, 0, ScriptValue::as_string)
+            .map_err(|e| e.to_string())?;
+        let x = parse_required_arg(&args, 1, ScriptValue::as_int).map_err(|e| e.to_string())?;
+        let y = parse_required_arg(&args, 2, ScriptValue::as_int).map_err(|e| e.to_string())?;
+        Ok(TextObj {
+            content,
+            pos: (x.try_into().unwrap_or(0), y.try_into().unwrap_or(0)),
+        })
     }
 }
-

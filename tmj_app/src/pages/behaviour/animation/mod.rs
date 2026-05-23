@@ -2,10 +2,25 @@ pub mod alpha_shift;
 pub mod bytes_stream;
 pub mod error;
 pub mod img_trans;
+pub mod offset_shift;
 pub mod rect_trans;
 pub mod typewriter;
 
-pub use rect_trans::AniRectTrans;
+pub use offset_shift::OffsetShift;
+pub use rect_trans::{
+    AniRectTrans, RectTransCurve, ResizeAnchor, SlideDirection, resize_target, slide_target,
+};
+
+use std::time::Duration;
+
+/// 确定性动画的归一化进度 [0, 1]（`anim_time` 为 0 时视为已完成）。
+pub(crate) fn anim_normalized_time(run_time: Duration, anim_time: Duration) -> f32 {
+    if anim_time.is_zero() {
+        1.0
+    } else {
+        (run_time.as_secs_f32() / anim_time.as_secs_f32()).clamp(0.0, 1.0)
+    }
+}
 use tmj_core::script::TypeName;
 
 use crate::pages::behaviour::visual_element::VisualElement;
