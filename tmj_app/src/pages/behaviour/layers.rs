@@ -113,10 +113,14 @@ impl LayerBehaviour {
         let name = parse_required_member(layer, layer::NAME, ScriptValue::as_string)?;
         ve.name = format!("layer.{name}");
 
-        LayerBehaviour::apply_layer_base_prop(&layer, &mut ve);
+        LayerBehaviour::apply_layer_base_prop(&layer, &mut ve)?;
 
         if layer_type == "effect" {
+            tracing::info!("create new effect layer {}", data);
             self.collect_layer_effect_anim(&layer, &ve.name, &data)?;
+        } else {
+            tracing::info!("create new image layer {}", data);
+            ve.kind = VisualElementKind::Image { source: data }
         };
 
         Ok(ve)
