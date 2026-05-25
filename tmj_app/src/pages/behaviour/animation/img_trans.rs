@@ -11,7 +11,7 @@ use crate::{
     art::{halfblock::mix_into_cell, theme},
     pages::behaviour::{
         animation::{Animation, AnyAnimation},
-        visual_element::VisualElementKind,
+        visual_element::{VisualElementCustomDrawer, VisualElementKind},
     },
 };
 
@@ -62,52 +62,62 @@ impl Animation for AniImgTrans {
         evalued_alpha = evalued_alpha.clamp(0.0, 1.0);
         if evalued_alpha == 0.0 && self.old_image.is_some() {
             ve.kind = VisualElementKind::Image {
-                source: self.old_image.clone().unwrap().to_str().unwrap().to_string(),
+                source: self
+                    .old_image
+                    .clone()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
             };
             return Ok(());
         }
 
         if evalued_alpha == 1.0 && self.new_image.is_some() {
             ve.kind = VisualElementKind::Image {
-                source: self.new_image.clone().unwrap().to_str().unwrap().to_string(),
+                source: self
+                    .new_image
+                    .clone()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
             };
             return Ok(());
         }
 
-        if let VisualElementKind::Custom { drawer } = &mut ve.kind {
-            let cur_img_path = self.new_image.clone();
+        let cur_img_path = self.new_image.clone();
+        let old_image_path = self.old_image.clone();
+        let drawer = VisualElementCustomDrawer::from(move |ve, buffer, rect| {
+            let default_bg = ve.style.bg.unwrap_or(theme::BLACK);
+            if evalued_alpha == 1.0 {
+                AniImgTrans::draw_image(cur_img_path.clone(), rect, default_bg, buffer)?;
+                return Ok(());
+            }
 
-            let old_image_path = self.old_image.clone();
+            if evalued_alpha == 0.0 {
+                AniImgTrans::draw_image(old_image_path.clone(), rect, default_bg, buffer)?;
+                return Ok(());
+            }
 
-            drawer.draw = Box::new(move |ve, buffer, rect| {
-                let default_bg = ve.style.bg.unwrap_or(theme::BLACK);
-                if evalued_alpha == 1.0 {
-                    AniImgTrans::draw_image(cur_img_path.clone(), rect, default_bg, buffer)?;
-                    return Ok(());
+            let mut new_buf = Buffer::empty(rect);
+            AniImgTrans::draw_image(cur_img_path.clone(), rect, default_bg, &mut new_buf)?;
+
+            let mut old_buf = Buffer::empty(rect);
+            AniImgTrans::draw_image(old_image_path.clone(), rect, default_bg, &mut old_buf)?;
+
+            for row in rect.rows() {
+                for col in row.columns() {
+                    let old_cell = &old_buf[(col.x, col.y)];
+                    let new_cell = &new_buf[(col.x, col.y)];
+                    let blend_cell = &mut buffer[(col.x, col.y)];
+                    mix_into_cell(new_cell, old_cell, evalued_alpha as f32, blend_cell);
                 }
+            }
+            Ok(())
+        });
+        ve.kind = VisualElementKind::Custom { drawer };
 
-                if evalued_alpha == 0.0 {
-                    AniImgTrans::draw_image(old_image_path.clone(), rect, default_bg, buffer)?;
-                    return Ok(());
-                }
-
-                let mut new_buf = Buffer::empty(rect);
-                AniImgTrans::draw_image(cur_img_path.clone(), rect, default_bg, &mut new_buf)?;
-
-                let mut old_buf = Buffer::empty(rect);
-                AniImgTrans::draw_image(old_image_path.clone(), rect, default_bg, &mut old_buf)?;
-
-                for row in rect.rows() {
-                    for col in row.columns() {
-                        let old_cell = &old_buf[(col.x, col.y)];
-                        let new_cell = &new_buf[(col.x, col.y)];
-                        let blend_cell = &mut buffer[(col.x, col.y)];
-                        mix_into_cell(new_cell, old_cell, evalued_alpha as f32, blend_cell);
-                    }
-                }
-                Ok(())
-            });
-        }
         Ok(())
     }
 

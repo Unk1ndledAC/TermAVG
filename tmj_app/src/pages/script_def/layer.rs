@@ -26,6 +26,7 @@ script_sym!(DATA, Member, "资源/效果数据（图路径或效果类型名）"
 script_sym!(LAYER_TYPE, Member, "图层类型：image 或 effect");
 script_sym!(SHOW, Function, "显示图层（可带淡入时长）");
 script_sym!(HIDE, Function, "隐藏图层（可带淡出时长）");
+script_sym!(SET, Function, "设置图层数据（字符串参数）");
 
 impl RegistableType for Layer {
     fn create_class_table(
@@ -94,6 +95,19 @@ impl RegistableType for Layer {
                     with_behaviour_mut_from_ctx_rc::<LayerBehaviour, _>(ctx, |b: &mut LayerBehaviour| {
                         b.export_show(&table_clone, duration)
                     })?;
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                SET,
+                ScriptValue::function(SET, move |ctx, args| {
+                    let data = parse_arg(&args, 0, String::new(), ScriptValue::as_string);
+                    table_clone
+                        .borrow_mut()
+                        .set(DATA, data.into_script_val(), None);
                     Ok(ScriptValue::nil())
                 }),
                 Some(ctx),

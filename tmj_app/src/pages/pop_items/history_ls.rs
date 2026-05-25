@@ -26,7 +26,16 @@ impl HistoryLs {
     }
 
     /// 添加一条记录，若超出容量上限，自动移除最旧的一条
-    pub fn push(&mut self, record: DialogueRecord) {
+    pub fn push(&mut self, record: DialogueRecord) { 
+        // 由于现在可以在session分次追加内容,因此这里需要尝试合并
+        if let Some(mut last) = self.records.pop_back() {
+            if last.speaker == record.speaker && last.id == record.id {
+                last.content = last.content + &record.content;
+                self.records.push_back(last);
+                return 
+            }
+            self.records.push_back(last);
+        }
         if self.records.len() >= self.max_capacity {
             self.records.pop_front();
         }

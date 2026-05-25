@@ -65,7 +65,27 @@ impl FrameBehaviour {
         self.typewriter.start_text = "".into();
     }
 
+    pub fn export_tadd(&mut self, text: String, speed: f64, speaker: String) {
+        self.face_img = "".into();
+        self.text = text.clone();
+        self.speaker = speaker;
+        self.typewriter.start_text = self.typewriter.target_text.clone();
+        self.typewriter.target_text = format!("{}{text}", self.typewriter.target_text);
+        self.typewriter.run_time = Duration::ZERO;
+        self.typewriter.speed = speed;
+    }
+
     pub fn export_say(&mut self, speaker: String, face_img: String, text: String, speed: f64) {
+        self.face_img = face_img;
+        self.text = text.clone();
+        self.speaker = speaker;
+        self.typewriter.start_text = "".to_string();
+        self.typewriter.target_text = text;
+        self.typewriter.run_time = Duration::ZERO;
+        self.typewriter.speed = speed;
+    }
+
+    pub fn export_sadd(&mut self, speaker: String, face_img: String, text: String, speed: f64) {
         self.face_img = face_img;
         self.text = text.clone();
         self.speaker = speaker;

@@ -7,14 +7,15 @@ use tmj_core::{
 };
 
 use crate::{
-    setting::SETTING,
-    utils::preparse_script,
     pages::{
         behaviour::{FrameBehaviour, with_behaviour_mut_from_ctx_rc},
         script_def::{
-            BaseVariable, Character, Layer, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect, VFrame, VLayerLs, VParagraph, VVoice, var_frame, var_layer_ls
+            BaseVariable, Character, Layer, TextObj, VBg, VBgm, VChapter, VCharacterLs, VEnvEffect,
+            VFrame, VLayerLs, VParagraph, VVoice, var_frame, var_layer_ls,
         },
     },
+    setting::SETTING,
+    utils::preparse_script,
     utils::script_args::{self, parse_arg, parse_required_arg},
 };
 
@@ -40,6 +41,7 @@ pub use super::var_layer_ls::LAYER_LS;
 pub use super::var_paragraph::PARAGRAPH;
 
 script_sym!(TEXT, Function, "在对话框显示文本");
+script_sym!(TADD, Function, "在对话框追加显示文本");
 script_sym!(DISPLAY_NAME, Function, "显示名称标签");
 script_sym!(SAVE_TO, Function, "保存游戏到槽位");
 script_sym!(ADD_LAYER, Function, "向 layer_ls 添加图层");
@@ -119,6 +121,15 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
                     speed = 30.0;
                 }
             }
+
+            crate::pages::pop_items::HISTORY_LS.lock().unwrap().push(
+                crate::pages::pop_items::DialogueRecord {
+                    id: c.borrow().session_counter(),
+                    speaker: speaker.clone(),
+                    content: raw_text.clone(),
+                },
+            );
+
             with_behaviour_mut_from_ctx_rc::<FrameBehaviour, _>(c, |b| {
                 b.export_text(raw_text, speed, speaker);
             })?;
@@ -126,7 +137,36 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
             Ok(ScriptValue::Nil)
         });
     }
+    {
+        ctx.set_global_func(TADD, |c, args| {
+            let raw_text = parse_required_arg(&args, 0, &ScriptValue::as_string)
+                .context("text requires content string")?;
+            let mut speed = parse_arg(&args, 1, -1.0, &ScriptValue::to_number);
+            let speaker = parse_arg(&args, 1, "".to_string(), &ScriptValue::as_string);
+            // 第二参数可以是speak 或者speed, 如同时需要,speed 放第三位
+            if speed < 0_f64 {
+                if !speaker.is_empty() {
+                    speed = parse_arg(&args, 2, 30.0, &ScriptValue::to_number);
+                } else {
+                    speed = 30.0;
+                }
+            }
 
+            crate::pages::pop_items::HISTORY_LS.lock().unwrap().push(
+                crate::pages::pop_items::DialogueRecord {
+                    id: c.borrow().session_counter(),
+                    speaker: speaker.clone(),
+                    content: raw_text.clone(),
+                },
+            );
+
+            with_behaviour_mut_from_ctx_rc::<FrameBehaviour, _>(c, |b| {
+                b.export_tadd(raw_text, speed, speaker);
+            })?;
+
+            Ok(ScriptValue::Nil)
+        });
+    }
     {
         ctx.set_global_func("create_default_character", |_ctx, args| {
             let path = parse_required_arg(&args, 0, ScriptValue::as_string)?;

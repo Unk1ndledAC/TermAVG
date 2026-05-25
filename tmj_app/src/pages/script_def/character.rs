@@ -14,7 +14,9 @@ use crate::{
         },
         pop_items::DialogueRecord,
     },
-    utils::script_args::{parse_arg, parse_duration, parse_member, parse_required_arg, parse_required_member},
+    utils::script_args::{
+        parse_arg, parse_duration, parse_member, parse_required_arg, parse_required_member,
+    },
 };
 
 script_sym!(CHARACTER, Type, "可构造的角色类型");
@@ -36,6 +38,11 @@ script_sym!(_FACES, Member, "表情名列表");
 script_sym!(_VOICES, Member, "语音表");
 script_sym!(FACE, Member, "当前表情名");
 script_sym!(SAY, Function, "角色说话（立绘、文本、语音）");
+script_sym!(
+    SADD,
+    Function,
+    "角色说话,直接追加到对话框（立绘、文本、语音）"
+);
 script_sym!(FADE_IN, Function, "入场：自右向左滑入 8 格并淡入到场上位置");
 script_sym!(TO_FACE, Function, "切换表情，带过度动画");
 script_sym!(UP, Function, "添加向上偏移动画");
@@ -130,7 +137,7 @@ impl RegistableType for Character {
                         .resolve_table_value(&faces_sv)
                         .ok()
                         .and_then(|faces_tbl| faces_tbl.borrow().get(&cur_face, None))
-                        .and_then(|v| v.as_str().map(str::to_string))
+                        .and_then(|v| v.as_string())
                         .unwrap_or_else(|| {
                             tracing::warn!("got character face img failed; set face none");
                             String::new()
@@ -159,7 +166,52 @@ impl RegistableType for Character {
                 Some(ctx),
             );
         }
+        {
+            let table_clone = Rc::clone(table_rc);
+            table_rc.borrow_mut().set(
+                SADD,
+                ScriptValue::function(SADD, move |ctx, args| {
+                    let text = parse_required_arg(&args, 0, ScriptValue::as_string)?;
+                    let speed = parse_arg(&args, 1, 20.0, ScriptValue::to_number);
+                    let speaker_name =
+                        parse_required_member(&table_clone, DISPLAY, ScriptValue::as_string)?;
+                    let cur_face =
+                        parse_required_member(&table_clone, FACE, ScriptValue::as_string)?;
+                    let faces_sv = table_clone.get(_FACES)?;
+                    let face_path = ctx
+                        .borrow()
+                        .resolve_table_value(&faces_sv)
+                        .ok()
+                        .and_then(|faces_tbl| faces_tbl.borrow().get(&cur_face, None))
+                        .and_then(|v| v.as_string())
+                        .unwrap_or_else(|| {
+                            tracing::warn!("got character face img failed; set face none");
+                            String::new()
+                        });
 
+                    tracing::info!("{speaker_name} is saying {text}");
+
+                    crate::pages::pop_items::HISTORY_LS
+                        .lock()
+                        .unwrap()
+                        .push(DialogueRecord {
+                            id: ctx.borrow().session_counter(),
+                            speaker: speaker_name.clone(),
+                            content: text.to_string(),
+                        });
+
+                    with_behaviour_mut_from_ctx_rc::<
+                        crate::pages::behaviour::dialogue_frame::FrameBehaviour,
+                        _,
+                    >(ctx, |b| {
+                        b.export_sadd(speaker_name.clone(), face_path, text.to_string(), speed);
+                    })?;
+
+                    Ok(ScriptValue::nil())
+                }),
+                Some(ctx),
+            );
+        }
         {
             let table_clone = Rc::clone(table_rc);
             table_rc.borrow_mut().set(
@@ -196,7 +248,8 @@ impl RegistableType for Character {
                 TO_FACE,
                 ScriptValue::function(TO_FACE, move |ctx, args| {
                     let face_name = parse_required_arg(&args, 0, ScriptValue::as_string)?;
-                    let old_face_name = parse_required_member(&table_clone, FACE, ScriptValue::as_string)?;
+                    let old_face_name =
+                        parse_required_member(&table_clone, FACE, ScriptValue::as_string)?;
                     let duration = parse_duration(&args, 1, 0.2);
 
                     let old_path = parse_required_member(
@@ -208,7 +261,7 @@ impl RegistableType for Character {
 
                     if old_path.is_err() {
                         tracing::warn!("{old_path:?} to_face pre face no stand image, skip cmd");
-                        return Ok(ScriptValue::Nil)
+                        return Ok(ScriptValue::Nil);
                     }
 
                     let new_path = parse_required_member(
@@ -220,13 +273,19 @@ impl RegistableType for Character {
 
                     if new_path.is_err() {
                         tracing::warn!("{new_path:?} to_face new face no stand image, skip cmd");
-                        return Ok(ScriptValue::Nil)
+                        return Ok(ScriptValue::Nil);
                     }
                     table_clone
                         .borrow_mut()
                         .set(FACE, face_name.into_script_val(), None);
                     with_behaviour_mut_from_ctx_rc::<CharactersStage, _>(ctx, |b| {
-                        let _ = b.export_to_face(ctx, &table_clone, &old_path.unwrap(), &new_path.unwrap(), duration);
+                        let _ = b.export_to_face(
+                            ctx,
+                            &table_clone,
+                            &old_path.unwrap(),
+                            &new_path.unwrap(),
+                            duration,
+                        );
                     })?;
                     Ok(ScriptValue::nil())
                 }),
