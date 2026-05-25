@@ -1,6 +1,7 @@
 
 use ratatui::buffer::Cell;
 use ratatui::style::Color;
+use crate::art::effect::cover_cell;
 
 /// 混合两个 HalfBlock 格点，返回新的“字符 + 前景色 + 背景色”。
 ///
@@ -22,6 +23,7 @@ pub fn mix_half_block_cells(src: &Cell, dst: &Cell, alpha: f32) -> (char, Color,
 
     // 重新编码为 HalfBlock 格点
     encode_half_block(upper, lower)
+
 }
 
 /// 从 Cell 中提取上半像素和下半像素的颜色。
@@ -109,7 +111,16 @@ fn encode_half_block(upper: Option<Color>, lower: Option<Color>) -> (char, Color
 /// 将混合结果直接写入一个 Cell，方便使用
 pub fn mix_into_cell(src: &Cell, dst: &Cell, alpha: f32, out: &mut Cell) {
     let (ch, fg, bg) = mix_half_block_cells(src, dst, alpha);
-    out.set_symbol(&ch.to_string());
-    out.fg = fg;
-    out.bg = bg;
+    let mut buf = [0; 4];               // 栈上数组，最多 4 字节
+    if  ch == ' '{
+        return;
+    }
+    let s = ch.encode_utf8(&mut buf); 
+    out.set_symbol(s);
+    if fg != Color::Reset {
+        out.set_fg(fg);
+    }
+    if bg != Color::Reset{
+        out.set_bg(bg);
+    }
 }

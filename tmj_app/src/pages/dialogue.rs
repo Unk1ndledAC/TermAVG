@@ -155,6 +155,7 @@ impl Screen for DialogueScene {
 
     fn sleep(&mut self) -> anyhow::Result<super::ScreenActRespond> {
         CmdBuffer::push(GameCmd::SaveTo(tmj_core::command::SaveSlot::Temp));
+        self.stop_audio()?;
         let resp = ScreenActRespond::default();
         Ok(resp)
     }

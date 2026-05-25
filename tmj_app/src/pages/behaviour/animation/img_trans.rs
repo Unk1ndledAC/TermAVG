@@ -32,7 +32,7 @@ impl AniImgTrans {
         buffer: &mut Buffer,
     ) -> anyhow::Result<()> {
         if !image.is_none() {
-            Pic::from(image.unwrap())?.render(rect, buffer);
+            Pic::from(image.unwrap())?.direct_render_to(rect, buffer);
         } else {
             let mut fill_cell = Cell::new(" ");
             fill_cell.set_bg(default_bg);

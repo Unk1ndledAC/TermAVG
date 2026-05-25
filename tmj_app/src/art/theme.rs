@@ -78,7 +78,7 @@ pub const THEME: Theme = Theme {
     },
     dialouge: Dialogue {
         name: Style::new().fg(WHITE).bg(BLACK),
-        inbox: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
+        inbox: Style::new().bg(DARK_BLUE).fg(WHITE),
         block: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
         black_edge: Style::new().bg(BLACK).fg(WHITE),
         charpter_subtitle: Style::new().fg(LIGHT_GRAY),

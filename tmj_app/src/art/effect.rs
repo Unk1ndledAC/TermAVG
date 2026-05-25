@@ -1,5 +1,5 @@
 use rand::{Rng, SeedableRng};
-use ratatui::buffer::Buffer;
+use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::{Flex, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::Text;
@@ -122,25 +122,27 @@ pub fn blend(mask_color: Color, cell_color: Color, percentage: f64) -> Color {
     #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     Color::Rgb(red as u8, green as u8, blue as u8)
 }
+pub fn cover_cell(raw_cell: &mut Cell, mask_cell: &Cell) {
+    if mask_cell.symbol().is_empty() {
+        return;
+    }
+    raw_cell.set_symbol(mask_cell.symbol());
+    if !mask_cell.style().fg.is_none() {
+        raw_cell.set_fg(mask_cell.style().fg.unwrap());
+    }
+    if !mask_cell.style().bg.is_none() {
+        raw_cell.set_bg(mask_cell.style().bg.unwrap());
+    }
+}
 
 pub fn cover(raw_buf: &mut Buffer, new_buf: &mut Buffer, area: Rect) {
     for row in area.rows() {
         for col in row.columns() {
             let cell = &mut raw_buf[(col.x, col.y)];
             let mask_cell = &mut new_buf[(col.x, col.y)];
-            if mask_cell.symbol().is_empty() {
-                continue;
-            }
-            cell.set_symbol(mask_cell.symbol());
-            if !mask_cell.style().fg.is_none() {
-                cell.set_fg(mask_cell.style().fg.unwrap());
-            }
-            if !mask_cell.style().bg.is_none() {
-                cell.set_bg(mask_cell.style().bg.unwrap());
-            }
+            cover_cell(cell, mask_cell);
         }
     }
-
 }
 
 /// a centered rect of the given size

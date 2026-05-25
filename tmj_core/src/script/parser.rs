@@ -69,31 +69,23 @@ impl Parser {
 
     /// 解析单个命令
     fn parse_command(&mut self) -> Result<Command, String> {
+        // 获取变量名
+        let first = self.parse_path()?;
+        // tracing::info!("first {first} current {:?}", self.current());
+        // self.advance();
+
         // 检查是否是赋值命令：ident = value
-        if self.check(&Token::Ident("".to_string())) {
-            let first = self.current().clone();
-            self.advance();
+        if self.check(&Token::Equal) {
+            tracing::info!("parse as equal");
+            self.advance(); // 跳过 =
 
-            if self.check(&Token::Equal) {
-                self.advance(); // 跳过 =
-
-                // 获取变量名
-                let var_name = match first {
-                    Token::Ident(name) => name,
-                    _ => return Err("Expected identifier before '='".to_string()),
-                };
-
-                // 解析右边的内容
-                // 可能是值，也可能是命令调用
-                return self.parse_assignment(var_name);
-            } else {
-                // 回退，作为调用命令
-                self.position -= 1;
-                return self.parse_call_or_set();
-            }
+            // 解析右边的内容
+            // 可能是值，也可能是命令调用
+            return self.parse_assignment(first);
+        } else {
+            // 作为调用命令
+            return self.parse_call_or_set(first);
         }
-
-        self.parse_call_or_set()
     }
 
     /// 解析赋值命令 (值或命令调用)
@@ -143,10 +135,9 @@ impl Parser {
     }
 
     /// 解析调用或 set 命令
-    fn parse_call_or_set(&mut self) -> Result<Command, String> {
-        let path = self.parse_path()?;
+    fn parse_call_or_set(&mut self, first_path: String) -> Result<Command, String> {
         // 直接解析第一个命令
-        let first = self.command_from_path(path)?;
+        let first = self.command_from_path(first_path)?;
         // 检测到链式调用
         if !self.check(&Token::Arrow) {
             return Ok(first);
@@ -283,7 +274,7 @@ impl Parser {
             return Ok(args);
         }
 
-        // 解析后续参数 
+        // 解析后续参数
         while !self.check(&Token::Newline) && !self.check(&Token::Arrow) {
             args.push(self.parse_value()?);
             if self.is_at_end() {
@@ -367,10 +358,8 @@ mod tests {
 
     #[test]
     fn chain_parses_wait_as_wait_command() {
-        let cmds = ScriptParser::parse_session(
-            r#"text "a" "b" -> wait 1.0 -> mc.say "c""#,
-        )
-        .expect("parse");
+        let cmds = ScriptParser::parse_session(r#"text "a" "b" -> wait 1.0 -> mc.say "c""#)
+            .expect("parse");
 
         assert_eq!(cmds.len(), 1);
         let Command::Chain { commands } = &cmds[0] else {

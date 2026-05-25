@@ -54,6 +54,21 @@ impl Pic {
             pic_frame,
         })
     }
+
+    pub fn direct_render_to(
+        self,
+        area: ratatui::prelude::Rect,
+        buf: &mut ratatui::prelude::Buffer,
+    ) {
+        let canva = Canvas::default()
+            .x_bounds([0_f64, (self.pic_frame.dimensions.0 + 1).into()])
+            .y_bounds([0_f64, (self.pic_frame.dimensions.1 + 1).into()])
+            .marker(Marker::HalfBlock)
+            .paint(move |ctx| {
+                ctx.draw(&self.pic_frame);
+            });
+        canva.render(area, buf);
+    }
 }
 
 impl Widget for Pic {
