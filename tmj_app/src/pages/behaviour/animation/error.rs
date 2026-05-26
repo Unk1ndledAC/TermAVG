@@ -18,9 +18,9 @@ use crate::{
 /// 滚动条幅文案（循环拼接）
 const BANNER: &str = "    CRITICAL SYSTEM ERROR >>> MALFUNCTION DETECTED <<<    ";
 /// 相邻条幅块之间的空行数（不含边框三行本身）
-const BANNER_ROW_SPACING: u16 = 4;
+const BANNER_ROW_SPACING: u16 = 3;
 /// 条幅文字从左向右平移的速度（列/秒）
-const BANNER_SCROLL_SPEED: f64 = 10.0;
+const BANNER_SCROLL_SPEED: f64 = 5.0;
 /// 条幅上下边框字符
 const BORDER_CHAR: char = '═';
 
@@ -52,14 +52,12 @@ impl EffectError {
         }
 
         // --- 1. 配色：正弦调制闪烁强度，在亮红/暗红与深红底之间插值 ---
-        let flash_on = ((t * 5.5).sin() + 1.0) / 2.0;
-        let bright_red = Color::Rgb(255, 40, 40);
-        let dim_red = Color::Rgb(120, 16, 16);
+        let flash_on = ((t * 0.8).sin() + 1.0) / 2.0;
+        let bright_red = Color::Rgb(170, 40, 40);
+        let dim_red = Color::Rgb(80, 16, 16);
         let fg = art::blend(bright_red, dim_red, flash_on);
         let bg = art::blend(Color::Rgb(28, 0, 0), theme::BLACK, flash_on);
         let accent_bg = Color::Rgb(56, 0, 0);
-
-
 
         // --- 3. 条幅滚动：按时间计算水平偏移，文字匀速向右移动 ---
         let banner_chars: Vec<char> = BANNER.chars().collect();

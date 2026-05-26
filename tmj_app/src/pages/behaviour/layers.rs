@@ -8,7 +8,7 @@ use crate::{
             Behaviour,
             animation::{
                 VeAniMap, VeTypedAnimationMap, alpha_shift::AniAlpha,
-                bytes_stream::EffectBytesStream, error::EffectError,
+                bytes_stream::EffectBytesStream, error::EffectError, glitch::EffectGlitch,
             },
             visual_element::{VisualElement, VisualElementKind},
         },
@@ -93,6 +93,11 @@ impl LayerBehaviour {
                 self.layer_ves_anim_map
                     .borrow_mut()
                     .insert_ani(ve_name, EffectBytesStream::default());
+            }
+            "glitch" => {
+                self.layer_ves_anim_map
+                    .borrow_mut()
+                    .insert_ani(ve_name, EffectGlitch::default());
             }
             _ => {
                 tracing::error!("unknow effect type {}", effect_type);

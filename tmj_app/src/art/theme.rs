@@ -21,6 +21,7 @@ pub struct KeyBinding {
 
 pub struct Dialogue {
     pub inbox: Style,
+    pub rev_inbox: Style,
     pub block: Style,
     pub black_edge: Style,
     pub name: Style,
@@ -79,6 +80,7 @@ pub const THEME: Theme = Theme {
     dialouge: Dialogue {
         name: Style::new().fg(WHITE).bg(BLACK),
         inbox: Style::new().bg(DARK_BLUE).fg(WHITE),
+        rev_inbox: Style::new().bg(WHITE).fg(BLACK),
         block: Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
         black_edge: Style::new().bg(BLACK).fg(WHITE),
         charpter_subtitle: Style::new().fg(LIGHT_GRAY),
