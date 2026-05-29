@@ -23,7 +23,8 @@ use crate::{
         },
         dialogue::DialogueScene,
         script_def::var_frame,
-    }, utils::script_args::{parse_member, parse_required_member},
+    },
+    utils::script_args::{parse_member, parse_required_member},
 };
 
 #[derive(TypeName)]
@@ -94,7 +95,6 @@ impl FrameBehaviour {
         self.typewriter.run_time = Duration::ZERO;
         self.typewriter.speed = speed;
     }
-
 }
 
 impl Behaviour for FrameBehaviour {
@@ -211,8 +211,9 @@ impl Behaviour for FrameBehaviour {
     ) -> anyhow::Result<()> {
         let mut vars = self.get_bind_vars(ctx);
         let frame = vars.pop().unwrap()?.as_table_or_resolve(ctx).unwrap();
-        let rev_style = parse_required_member(&frame, var_frame::M_REV_STYLE, ScriptValue::as_bool)?;
-        
+        let rev_style =
+            parse_required_member(&frame, var_frame::M_REV_STYLE, ScriptValue::as_bool)?;
+
         let frame_show = frame
             .borrow()
             .get(var_frame::VISIBLE, None)
@@ -220,15 +221,14 @@ impl Behaviour for FrameBehaviour {
             .unwrap_or(true);
         let show_all = !screen.hide_dialouge && frame_show;
 
-        for name in [
-            Self::VE_FRAME_BLOCK,
-            Self::VE_FRAME_TEXT,
-            Self::VE_FRAME_NAME,
-            Self::VE_FRAME_SHORTKEY,
-            Self::VE_FACE,
-        ] {
-            if let Some(ve) = elements.iter_mut().find(|x| x.name == name) {
-                ve.visible = show_all;
+        for ve in elements.iter_mut() {
+            match ve.name.as_str() {
+                Self::VE_FRAME_BLOCK
+                | Self::VE_FRAME_TEXT
+                | Self::VE_FRAME_NAME
+                | Self::VE_FRAME_SHORTKEY
+                | Self::VE_FACE => ve.visible = show_all,
+                _ => continue,
             }
         }
 
@@ -236,32 +236,40 @@ impl Behaviour for FrameBehaviour {
             return Ok(());
         }
 
-        if let Some(ve) = elements.iter_mut().find(|x| x.name == Self::VE_FRAME_TEXT) {
-            self.typewriter.apply_to_ve(ve)?;
-            if rev_style {
-                ve.style = THEME.dialouge.rev_inbox;
-            }
-            else {
-                ve.style = THEME.dialouge.inbox;
-            }
-        }
-
-        if let Some(ve) = elements.iter_mut().find(|x| x.name == Self::VE_FACE) {
-            ve.visible = !self.face_img.is_empty();
-            if !self.face_img.is_empty()
-                && let VisualElementKind::Image { source } = &mut ve.kind
-            {
-                *source = self.face_img.clone();
-            }
-        }
-
-        if let Some(ve) = elements.iter_mut().find(|x| x.name == Self::VE_FRAME_NAME) {
-            if self.speaker.is_empty() {
-                ve.visible = false;
-            }
-
-            if let VisualElementKind::Text { content } = &mut ve.kind {
-                *content = self.speaker.clone();
+        for ve in elements.iter_mut() {
+            match ve.name.as_str() {
+                Self::VE_FRAME_BLOCK => {
+                    ve.style = if rev_style {
+                        THEME.dialouge.rev_inbox
+                    } else {
+                        THEME.dialouge.block
+                    };
+                }
+                Self::VE_FRAME_TEXT => {
+                    self.typewriter.apply_to_ve(ve)?;
+                    ve.style = if rev_style {
+                        THEME.dialouge.rev_inbox
+                    } else {
+                        THEME.dialouge.inbox
+                    };
+                }
+                Self::VE_FACE => {
+                    ve.visible = !self.face_img.is_empty();
+                    if !self.face_img.is_empty()
+                        && let VisualElementKind::Image { source } = &mut ve.kind
+                    {
+                        *source = self.face_img.clone();
+                    }
+                }
+                Self::VE_FRAME_NAME => {
+                    if self.speaker.is_empty() {
+                        ve.visible = false;
+                    }
+                    if let VisualElementKind::Text { content } = &mut ve.kind {
+                        *content = self.speaker.clone();
+                    }
+                }
+                _ => {}
             }
         }
 
