@@ -27,7 +27,8 @@ impl BaseVariable for VBg {
         let _ = ctx.set_table_member(BG, M_IMAGE, ScriptValue::String("".into()));
         let _ = ctx.set_table_member(BG, M_IS_EDGE, ScriptValue::Bool(true));
 
-        let _ = ctx.set_table_func(BG, HIDE_EDGE, |ctx, _args| {
+        let _ = ctx.set_table_func(BG, HIDE_EDGE, |ctx, args| {
+            let duration_sec = parse_arg(&args, 0, 1.0, ScriptValue::to_number);
             {
                 let mut c = ctx.borrow_mut();
                 c.set_table_member(BG, M_IS_EDGE, ScriptValue::bool(false))
@@ -35,14 +36,15 @@ impl BaseVariable for VBg {
 
             }
             with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
-                b.export_hide_edge();
+                b.export_hide_edge(duration_sec);
             })?;
 
             Ok(ScriptValue::Nil)
         });
 
 
-        let _ = ctx.set_table_func(BG, SHOW_EDGE, |ctx, _args| {
+        let _ = ctx.set_table_func(BG, SHOW_EDGE, |ctx, args| {
+            let duration_sec = parse_arg(&args, 0, 1.0, ScriptValue::to_number);
             {
                 let mut c = ctx.borrow_mut();
                 c.set_table_member(BG, M_IS_EDGE, ScriptValue::bool(true))
@@ -50,7 +52,7 @@ impl BaseVariable for VBg {
 
             }
             with_behaviour_mut_from_ctx_rc::<BackgroundBehaviour, _>(ctx, |b: &mut BackgroundBehaviour| {
-                b.export_show_edge();
+                b.export_show_edge(duration_sec);
             })?;
 
             Ok(ScriptValue::Nil)

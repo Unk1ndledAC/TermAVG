@@ -184,6 +184,7 @@ impl Behaviour for FrameBehaviour {
                     content: String::new(),
                 },
                 style: THEME.dialouge.name,
+                text_alignment: Some(Alignment::Center),
                 ..Default::default()
             },
             VisualElement {

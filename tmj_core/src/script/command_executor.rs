@@ -229,10 +229,12 @@ impl CommandExecutor {
 
     fn execute_command(&mut self, context: &Rc<RefCell<ScriptContext>>) -> ExecuteStatus {
         match &self.command {
-            Command::Assignment { name, value } => {
+            Command::Assignment { name: path, value } => {
                 let mut ctx = context.borrow_mut();
-                ctx.set_global_val(name, value.clone());
-
+                match ctx.set_table(path, value.clone()) {
+                    Err(e) => {tracing::error!("assign cmd failed for: {e:?}")},
+                    _ => {}
+                };
                 ExecuteStatus::Completed
             }
             Command::CommandAssignment {

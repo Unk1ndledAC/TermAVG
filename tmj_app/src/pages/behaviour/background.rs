@@ -1,7 +1,7 @@
 use std::{path::PathBuf, time};
 
 use ratatui::{
-    layout::{Constraint, Layout},
+    layout::{Constraint, Layout, Rect},
     widgets::Wrap,
 };
 use tmj_core::{
@@ -16,7 +16,7 @@ use crate::{
         dialogue::DialogueScene,
         behaviour::{
             Behaviour,
-            animation::{Animation, img_trans::AniImgTrans},
+            animation::{Animation, img_trans::AniImgTrans, rect_trans::{AniRectTrans, RectTransCurve}},
             logical_area,
             ve_z_index::{Z_BG, Z_BG_EDGE},
             visual_element::{VisualElement, VisualElementCustomDrawer, VisualElementKind},
@@ -25,10 +25,21 @@ use crate::{
     },
 };
 
-#[derive(TypeName, Default)]
+#[derive(TypeName)]
 pub struct BackgroundBehaviour {
-    is_edge: bool,
     img_trans_ani: AniImgTrans,
+    edge_top_ani: AniRectTrans,
+    edge_bottom_ani: AniRectTrans,
+}
+
+impl Default for BackgroundBehaviour {
+    fn default() -> Self {
+        Self {
+            img_trans_ani: AniImgTrans::default(),
+            edge_top_ani: AniRectTrans::default(),
+            edge_bottom_ani: AniRectTrans::default(),
+        }
+    }
 }
 
 impl BackgroundBehaviour {
@@ -52,18 +63,34 @@ impl BackgroundBehaviour {
         self.img_trans_ani.run_time = time::Duration::ZERO;
     }
 
-    pub fn export_show_edge(&mut self) {
-        self.is_edge = true;
+    pub fn export_show_edge(&mut self, duration_secs: f64) {
+        let area = logical_area();
+        let h = LAYOUT.vertical_dark_edge;
+        let top_start = Rect::new(area.x, area.y, area.width, 0);
+        let top_target = Rect::new(area.x, area.y, area.width, h);
+        let bottom_start = Rect::new(area.x, area.bottom(), area.width, 0);
+        let bottom_target = Rect::new(area.x, area.bottom() - h, area.width, h);
+        self.edge_top_ani.begin(top_start, top_target, duration_secs, RectTransCurve::SineInOut);
+        self.edge_bottom_ani.begin(bottom_start, bottom_target, duration_secs, RectTransCurve::SineInOut);
     }
 
-    pub fn export_hide_edge(&mut self) {
-        self.is_edge = false;
+    pub fn export_hide_edge(&mut self, duration_secs: f64) {
+        let area = logical_area();
+        let h = LAYOUT.vertical_dark_edge;
+        let top_start = Rect::new(area.x, area.y, area.width, h);
+        let top_target = Rect::new(area.x, area.y, area.width, 0);
+        let bottom_start = Rect::new(area.x, area.bottom() - h, area.width, h);
+        let bottom_target = Rect::new(area.x, area.bottom(), area.width, 0);
+        self.edge_top_ani.begin(top_start, top_target, duration_secs, RectTransCurve::SineInOut);
+        self.edge_bottom_ani.begin(bottom_start, bottom_target, duration_secs, RectTransCurve::SineInOut);
     }
 }
 
 impl Behaviour for BackgroundBehaviour {
     fn is_animating(&self) -> bool {
         self.img_trans_ani.is_animing()
+            || self.edge_top_ani.is_animing()
+            || self.edge_bottom_ani.is_animing()
     }
     fn sync_from_ctx(&mut self, ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
         let mut vars = self.get_bind_vars(&ctx);
@@ -77,7 +104,11 @@ impl Behaviour for BackgroundBehaviour {
             .transpose()?
             .and_then(|v| v.as_string())
             .ok_or_else(|| anyhow::anyhow!("{}.{} missing or not string", BG, Self::BG_IMAGE))?;
-        self.is_edge = is_edge;
+        if is_edge {
+            self.export_show_edge(0.0);
+        } else {
+            self.export_hide_edge(0.0);
+        }
         self.img_trans_ani.reset();
         self.img_trans_ani.new_image = Self::trans_string_path(img_path);
         Ok(())
@@ -105,6 +136,15 @@ impl Behaviour for BackgroundBehaviour {
             Constraint::Length(LAYOUT.vertical_dark_edge),
         ]));
 
+        let (top_rect, bottom_rect) = if is_edge_show {
+            (up, down)
+        } else {
+            (
+                Rect::new(area.x, area.y, area.width, 0),
+                Rect::new(area.x, area.bottom(), area.width, 0),
+            )
+        };
+
         Ok(vec![
             VisualElement {
                 name: Self::VE_BG.to_string(),
@@ -119,9 +159,9 @@ impl Behaviour for BackgroundBehaviour {
             },
             VisualElement {
                 name: Self::VE_EDGE_TOP.to_string(),
-                visible: is_edge_show,
+                visible: true,
                 z_index: Z_BG_EDGE,
-                rect: up,
+                rect: top_rect,
                 clear_before_draw: true,
                 text_wrap: Some(Wrap { trim: false }),
                 kind: VisualElementKind::Fill,
@@ -130,9 +170,9 @@ impl Behaviour for BackgroundBehaviour {
             },
             VisualElement {
                 name: Self::VE_EDGE_BOTTOM.to_string(),
-                visible: is_edge_show,
+                visible: true,
                 z_index: Z_BG_EDGE,
-                rect: down,
+                rect: bottom_rect,
                 clear_before_draw: true,
                 text_wrap: Some(Wrap { trim: false }),
                 kind: VisualElementKind::Fill,
@@ -152,10 +192,10 @@ impl Behaviour for BackgroundBehaviour {
             self.img_trans_ani.apply_to_ve(bg)?;
         }
         if let Some(top) = elements.iter_mut().find(|x| x.name == Self::VE_EDGE_TOP) {
-            top.visible = self.is_edge;
+            self.edge_top_ani.apply_to_ve(top)?;
         }
         if let Some(bottom) = elements.iter_mut().find(|x| x.name == Self::VE_EDGE_BOTTOM) {
-            bottom.visible = self.is_edge;
+            self.edge_bottom_ani.apply_to_ve(bottom)?;
         }
 
         Ok(())
@@ -163,20 +203,28 @@ impl Behaviour for BackgroundBehaviour {
 
     fn tick_update(&mut self, _ctx: ContextRef, delta_time: std::time::Duration) {
         self.img_trans_ani.update(delta_time);
+        self.edge_top_ani.update(delta_time);
+        self.edge_bottom_ani.update(delta_time);
     }
 
     fn on_force_over_animation(&mut self) -> anyhow::Result<()> {
         self.img_trans_ani.force_over();
+        self.edge_top_ani.force_over();
+        self.edge_bottom_ani.force_over();
         Ok(())
     }
 
     fn on_end_dialouge(&mut self) -> anyhow::Result<()> {
         self.img_trans_ani.reset();
+        self.edge_top_ani.reset();
+        self.edge_bottom_ani.reset();
         Ok(())
     }
 
     fn on_end_session(&mut self, _ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
         self.img_trans_ani.reset();
+        self.edge_top_ani.reset();
+        self.edge_bottom_ani.reset();
         Ok(())
     }
 }

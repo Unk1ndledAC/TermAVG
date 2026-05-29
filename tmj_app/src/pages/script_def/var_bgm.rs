@@ -99,7 +99,7 @@ impl BaseVariable for VBgm {
         let _ = ctx.set_table_member(BGM, M_SOURCE, ScriptValue::Nil);
 
         let _ = ctx.set_table_func(BGM, STOP, |_ctx, args| {
-            let fade_duration = script_args::parse_duration(&args, 0, 0.0);
+            let fade_duration = script_args::parse_duration(&args, 0, 1.0);
             Self::stop(fade_duration);
             Ok(ScriptValue::Nil)
         });
