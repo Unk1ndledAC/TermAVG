@@ -5,12 +5,15 @@ chapter.show_title "X-1" 1.0
 chapter.show_sub_title "所有人的具体生活，已经降级为思辨性世界的生活。" 1.0
 
 #
+layer_heart = layer "LAYER_HEART" "effect" 1005 "heart_beat"
+layer_heart.show
 text "我喜欢故事" "??" 
 
 #
 text "倒不如说没有人不喜欢故事吧" 300
 
 #
+layer_heart.hide
 layer_error = layer "LayerError" "effect" 1001 "Error"
 layer_error.show 1.0
 text "从世界发明了故事开始,人类就能通过阅读了解别人浓缩的人生以打法自己平庸的时间."
@@ -44,39 +47,6 @@ text "只要还记得这一点,无论怎样的感官刺激都会变得平淡吧.
 text "没有人会像害怕死一样害怕在游戏里被击杀.幻象不因为幻象表现得很有真实感就不是幻想了,因此有的人也会对故事无感,他们骗不过自己,觉得阅读故事是很平淡体验"
 
 #
-text "可我喜欢故事.因为我知道了真相但依然喜欢故事.这才是真正的喜欢!"
-
-#
-text "为什么呢? 我记得金刚经里说,一切有为法，如梦幻泡影。如露亦如电，应作如是观。"
-
-#
-text "我觉得佛祖说的有为法肯定是在说各种理论啦,价值观啦,情感啦.佛祖这么说简直是把整个人生都虚无化了"
-
-#
-text "但是, 也许佛祖就只是认为人生如同梦幻泡影.人生来活在世上就如露水如闪电了,各种体验和感情组成了我们的一生."
-
-#
-text "既然这样, 那么喜欢故事也就是理所应当吧?"
-
-#
-text "我们本来就是追求体验, 即使故事是某种虚幻, 那也无妨, 因为我们本身就是虚幻"
-
-#
-text "人总是会死的呢,泡泡肯定会被戳破,所以在那之前泡泡越多越好"
-
-#
-text "所以我要看着,再多看着一点"
-
-#
-text "对啊,多看着一点.要是能永远活下去就好了"
-
-#
-text "网文太监半年诈尸更新一章,要看完得活多久."
-
-#
-text "..."
-
-#
 fc = character "resource/fc.chr" // 女主 夏界
 mc = character "resource/mc.chr" // 主角 艾可思
 bxy = character "resource/bxy.chr" // 副女主 白循衍
@@ -93,12 +63,18 @@ once mc.face oops
 mc.say 喔?啊,不是?欸?
 
 #
+layer_glitch = layer "LAYER_GLIYCH" "effect" 1005 "glitch"
+layer_glitch.show
 fc.say 难道是无意识盯着课代表看?
 
 #
 bg.trans_to "resource/bg_c2.png" 1.0
 
 #
+set layer_glitch.z_deep 5001
+
+layer_bytestream = layer "LAYER_STREAM" "effect" 1005 "bytestream"
+layer_bytestream.show
 frame.hide
 paragraph.show
 paragraph.new "
@@ -111,6 +87,7 @@ paragraph.print "
 "
 
 #
+layer_glitch.hide
 paragraph.print "
     啊还有哦虽然你发了很多哈基米音乐但是我更喜欢偶尔发的音mad鬼畜最喜欢创价和homo了感觉非常有品啊其次就是潮汕英豪传了作为杀马特鬼畜领域的代表性作品也是非常本土化和有创造力呢。
 
@@ -125,5 +102,12 @@ paragraph.print "
 paragraph.hide
 frame.show
 text 这家伙在说什么呢,感觉是玩⚪玩的所以不敢在网络说话在线下找到我疯狂吐槽顺便高歌一首哈基米音乐
+
+#
+bg.set ""
+text ""
+
+#
+text "左转!"
 
 
