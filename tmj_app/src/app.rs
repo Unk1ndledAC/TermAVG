@@ -62,9 +62,7 @@ impl App {
             }
             app.terminal.draw(|f| game.draw(f));
 
-            if last_tick.elapsed() < tick_rate {
-                thread::sleep(tick_rate - last_tick.elapsed());
-            }
+            thread::sleep(tick_rate.saturating_sub(last_tick.elapsed()));
 
             if game.game_flow.borrow().is_ready_quit() {
                 break Ok(());

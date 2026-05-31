@@ -4,7 +4,11 @@ use std::{
 };
 
 use rand::Rng;
-use ratatui::style::Color;
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::Color,
+};
 use tmj_core::script::TypeName;
 
 use crate::pages::behaviour::{
@@ -14,15 +18,20 @@ use crate::pages::behaviour::{
 
 const ASCII_CHARS: &[u8] =
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~";
-const TRAIL_MAX: usize = 24;
+const TRAIL_MAX: usize = 20;
+/// 每帧每空列生成新流的概率
+const SPAWN_CHANCE: f64 = 0.08;
+/// 每帧每字符突变的概率
+const MUTATE_CHANCE: f64 = 0.04;
 
 struct StreamState {
+    col: u16,
     head: f64,
-    chars: Vec<char>,
     speed: f64,
+    chars: [char; TRAIL_MAX],
 }
 
-/// 文字流动画：随机 ASCII 字符从上到下流淌，维护列级下落状态
+/// 文字流动画：随机 ASCII 字符持续随机下落，流随时间逐列生成
 #[derive(TypeName, Default)]
 pub struct EffectBytesStream {
     pub run_time: time::Duration,
@@ -44,62 +53,56 @@ impl Animation for EffectBytesStream {
     fn apply_to_ve(&self, ve: &mut VisualElement) -> anyhow::Result<()> {
         Self::ensure_custom_drawer(ve);
         let streams = Arc::clone(&self.streams);
-        let t = self.run_time.as_secs_f64();
         if let VisualElementKind::Custom { drawer } = &mut ve.kind {
             drawer.draw = Box::new(move |_ve, buffer, rect| {
                 if rect.width == 0 || rect.height == 0 {
                     return Ok(());
                 }
 
+                let mut rng = rand::thread_rng();
                 let mut streams = streams.lock().unwrap();
 
-                if streams.len() != rect.width as usize {
-                    let mut rng = rand::thread_rng();
-                    *streams = (0..rect.width)
-                        .map(|i| {
-                            let len = rect.height as usize;
-                            StreamState {
-                                head: -(i as f64 * 0.3) - rng.gen_range(5.0..40.0),
-                                chars: (0..len)
-                                    .map(|_| {
-                                        let idx = rng.gen_range(0..ASCII_CHARS.len());
-                                        ASCII_CHARS[idx] as char
-                                    })
-                                    .collect(),
-                                speed: 2.0 + rng.random::<f64>() * 6.0,
-                            }
-                        })
-                        .collect();
-                }
-
-                let mut rng = rand::thread_rng();
-                for s in streams.iter_mut() {
-                    let head_i = s.head.floor() as i32;
-                    for row in 0..rect.height {
-                        let dist = head_i - row as i32;
-                        if dist >= 0 && (dist as usize) < TRAIL_MAX {
-                            if rng.random_bool(0.04) {
-                                let idx = rng.gen_range(0..ASCII_CHARS.len());
-                                s.chars[row as usize] = ASCII_CHARS[idx] as char;
-                            }
+                if streams.len() < rect.width as usize {
+                    let occupied: Vec<u16> = streams.iter().map(|s| s.col).collect();
+                    for _ in 0..(rect.width as usize).saturating_sub(streams.len()) {
+                        let candidates: Vec<u16> = (0..rect.width)
+                            .filter(|c| !occupied.contains(c))
+                            .collect();
+                        if candidates.is_empty() || !rng.random_bool(SPAWN_CHANCE) {
+                            break;
                         }
+                        let col = candidates[rng.random_range(0..candidates.len())];
+                        streams.push(StreamState {
+                            col,
+                            head: -(rng.random::<f64>() * TRAIL_MAX as f64),
+                            speed: 2.0 + rng.random::<f64>() * 5.0,
+                            chars: core::array::from_fn(|_| {
+                                let idx = rng.gen_range(0..ASCII_CHARS.len());
+                                ASCII_CHARS[idx] as char
+                            }),
+                        });
                     }
                 }
 
-                for (col, s) in streams.iter().enumerate() {
-                    let x = rect.x + col as u16;
+                let limit = rect.height as f64 + TRAIL_MAX as f64;
+                streams.retain(|s| s.head < limit);
+
+                for s in streams.iter_mut() {
                     let head_i = s.head.floor() as i32;
+                    let x = rect.x + s.col;
 
                     for row in 0..rect.height {
-                        let y = rect.y + row;
                         let dist = head_i - row as i32;
-
-                        if dist >= 0 && (dist as usize) < TRAIL_MAX.min(s.chars.len()) {
+                        if dist >= 0 && (dist as usize) < TRAIL_MAX {
+                            let idx = dist as usize;
+                            if rng.random_bool(MUTATE_CHANCE) {
+                                let ci = rng.gen_range(0..ASCII_CHARS.len());
+                                s.chars[idx] = ASCII_CHARS[ci] as char;
+                            }
                             let brightness = 1.0 - dist as f64 / TRAIL_MAX as f64;
                             let b = (brightness * brightness * 255.0) as u8;
-                            let cell = &mut buffer[(x, y)];
-                            let ch = s.chars[row as usize];
-                            cell.set_symbol(ch.encode_utf8(&mut [0u8; 4]));
+                            let cell = &mut buffer[(x, rect.y + row)];
+                            cell.set_symbol(s.chars[idx].encode_utf8(&mut [0u8; 4]));
                             cell.set_fg(Color::Rgb(b, b / 4, b / 4));
                         }
                     }
