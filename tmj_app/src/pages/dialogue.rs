@@ -278,7 +278,8 @@ impl DialogueScene {
         for behaviour in self.script_behaviours.values_mut().values_mut() {
             behaviour.sync_from_ctx(self.interpreter.borrow().context())?;
         }
-        self.apply_current_session()?;
+        self.apply_current_session().context("apply current session failed")?;
+        self.init_audio().context("init_audio failed")?;
         Ok(())
     }
 

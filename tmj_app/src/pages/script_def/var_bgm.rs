@@ -54,7 +54,7 @@ impl VBgm {
         let path_log = path.to_string();
         let fade_type = fade_type.to_string();
 
-        AUDIOM.with_borrow_mut(move |a| { 
+        AUDIOM.with_borrow_mut(move |a| {
             tracing::info!("bgm fading! {}", path_log);
             match fade_type.as_str() {
                 audio::FADE_IN => {
@@ -98,18 +98,18 @@ impl BaseVariable for VBgm {
 
         let _ = ctx.set_table_member(BGM, M_SOURCE, ScriptValue::Nil);
 
-        let _ = ctx.set_table_func(BGM, STOP, |_ctx, args| {
+        let _ = ctx.set_table_func(BGM, STOP, |ctx, args| {
             let fade_duration = script_args::parse_duration(&args, 0, 1.0);
+            ctx.borrow_mut()
+                .set_table_member(BGM, M_SOURCE, ScriptValue::string(""))
+                .map_err(|s| anyhow::anyhow!(s))
+                .context("stop clear m_source faild")?;
             Self::stop(fade_duration);
             Ok(ScriptValue::Nil)
         });
         let _ = ctx.set_table_func(BGM, SET, |ctx, args| {
-            let path = script_args::parse_required_arg(
-                &args,
-                0,
-                ScriptValue::as_string,
-            )
-            .context("!!! bgm error arg type")?;
+            let path = script_args::parse_required_arg(&args, 0, ScriptValue::as_string)
+                .context("!!! bgm error arg type")?;
             let fade_type = script_args::parse_arg(
                 &args,
                 1,

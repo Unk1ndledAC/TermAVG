@@ -30,7 +30,7 @@ pub fn preparse_script(origin_path: &PathBuf, target_path: &PathBuf, origin_numb
                         }
                     }
                     if let Ok(num) = num_str.parse::<u32>() {
-                        n = num; // 更新当前数字
+                        n = num + 1; // 更新当前数字 + 1
                     }
                     // 原样输出该行（不做修改）
                     writeln!(w_file, "{}", line).unwrap();

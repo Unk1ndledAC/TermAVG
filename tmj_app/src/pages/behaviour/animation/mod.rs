@@ -2,6 +2,7 @@ pub mod alpha_shift;
 pub mod bytes_stream;
 pub mod error;
 pub mod glitch;
+pub mod heart_beat;
 pub mod img_trans;
 pub mod offset_shift;
 pub mod rect_trans;

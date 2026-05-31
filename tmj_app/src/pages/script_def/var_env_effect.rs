@@ -90,19 +90,19 @@ impl BaseVariable for VEnvEffect {
         ctx.set_global_table(ENV_EFFECT);
         let _ = ctx.set_table_member(ENV_EFFECT, M_SOURCE, ScriptValue::Nil);
         let _ = ctx.set_table_func(ENV_EFFECT, SET, |ctx, args| {
-            let path = script_args::parse_required_arg(
-                &args,
-                0,
-                ScriptValue::as_string,
-            )
-            .context("env_effect.set requires file path string")?;
+            let path = script_args::parse_required_arg(&args, 0, ScriptValue::as_string)
+                .context("env_effect.set requires file path string")?;
             let fade_duration = script_args::parse_duration(&args, 1, 0.0);
             let source_volume = script_args::parse_volume(&args, 2, 1.0);
             Self::set(ctx, &path, fade_duration, source_volume)?;
             Ok(ScriptValue::Nil)
         });
-        let _ = ctx.set_table_func(ENV_EFFECT, STOP, |_ctx, args| {
+        let _ = ctx.set_table_func(ENV_EFFECT, STOP, |ctx, args| {
             let fade_duration = script_args::parse_duration(&args, 0, 0.0);
+            ctx.borrow_mut()
+                .set_table_member(ENV_EFFECT, M_SOURCE, ScriptValue::string(""))
+                .map_err(|s| anyhow::anyhow!(s))
+                .context("stop clear m_source faild")?;
             Self::stop(fade_duration);
             Ok(ScriptValue::Nil)
         });

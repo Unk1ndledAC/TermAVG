@@ -28,6 +28,7 @@ pub struct Dialogue {
     pub charpter_subtitle: Style,
     pub charpter_title: Style,
     pub background: Style,
+    pub heart_beat: Style,
 }
 
 pub struct History {
@@ -86,6 +87,7 @@ pub const THEME: Theme = Theme {
         charpter_subtitle: Style::new().fg(LIGHT_GRAY),
         charpter_title: Style::new().fg(WHITE),
         background: Style::new().bg(BLACK),
+        heart_beat: Style::new().fg(Color::Rgb(220, 27, 27)),
     },
     history: History{
         base: Style::new().bg(DARK_BLUE),

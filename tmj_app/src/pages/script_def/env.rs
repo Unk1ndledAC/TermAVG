@@ -198,19 +198,11 @@ pub fn init_env(ctx: ContextRef, behaviours: crate::pages::behaviour::BehaviourM
     }
 
     {
-        ctx.set_global_func(LOG, |c, args| {
-            let path = parse_required_arg(&args, 0, |v| {
-                v.as_expression()
-                    .or_else(|| v.as_str().map(|x| x.to_string()))
-            })?;
-
-            let value = c
-                .borrow()
-                .resolve_path(&path)
-                .map_err(|e| anyhow::anyhow!(e))?;
-            let message = format!("log {path} => {:?}", value);
-            println!("{message}");
-            tracing::info!("{message}");
+        ctx.set_global_func(LOG, |_c, args| {
+            for (pos, arg) in args.iter().enumerate() {
+                let message = format!("log print:arg{pos} {arg:?}");
+                tracing::info!("{message}");
+            }
             Ok(ScriptValue::Nil)
         });
     }

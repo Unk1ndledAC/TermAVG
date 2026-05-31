@@ -4,11 +4,7 @@ use std::{
 };
 
 use rand::Rng;
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Color,
-};
+use ratatui::style::Color;
 use tmj_core::script::TypeName;
 
 use crate::pages::behaviour::{
@@ -16,7 +12,8 @@ use crate::pages::behaviour::{
     visual_element::{VisualElement, VisualElementCustomDrawer, VisualElementKind},
 };
 
-const ASCII_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~";
+const ASCII_CHARS: &[u8] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~";
 const TRAIL_MAX: usize = 24;
 
 struct StreamState {
@@ -44,10 +41,7 @@ impl EffectBytesStream {
 }
 
 impl Animation for EffectBytesStream {
-    fn apply_to_ve(
-        &self,
-        ve: &mut VisualElement,
-    ) -> anyhow::Result<()> {
+    fn apply_to_ve(&self, ve: &mut VisualElement) -> anyhow::Result<()> {
         Self::ensure_custom_drawer(ve);
         let streams = Arc::clone(&self.streams);
         let t = self.run_time.as_secs_f64();
@@ -65,7 +59,7 @@ impl Animation for EffectBytesStream {
                         .map(|i| {
                             let len = rect.height as usize;
                             StreamState {
-                                head: -(i as f64 * 1.3) - rng.gen_range(5.0..40.0),
+                                head: -(i as f64 * 0.3) - rng.gen_range(5.0..40.0),
                                 chars: (0..len)
                                     .map(|_| {
                                         let idx = rng.gen_range(0..ASCII_CHARS.len());
@@ -106,8 +100,7 @@ impl Animation for EffectBytesStream {
                             let cell = &mut buffer[(x, y)];
                             let ch = s.chars[row as usize];
                             cell.set_symbol(ch.encode_utf8(&mut [0u8; 4]));
-                            cell.set_fg(Color::Rgb(b / 4, b, b / 4));
-                            cell.set_bg(Color::Rgb(0, 0, 0));
+                            cell.set_fg(Color::Rgb(b, b / 4, b / 4));
                         }
                     }
                 }

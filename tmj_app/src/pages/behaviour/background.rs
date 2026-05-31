@@ -216,15 +216,15 @@ impl Behaviour for BackgroundBehaviour {
 
     fn on_end_dialouge(&mut self) -> anyhow::Result<()> {
         self.img_trans_ani.reset();
-        self.edge_top_ani.reset();
-        self.edge_bottom_ani.reset();
+        // self.edge_top_ani.reset();
+        // self.edge_bottom_ani.reset();
         Ok(())
     }
 
     fn on_end_session(&mut self, _ctx: tmj_core::script::ContextRef) -> anyhow::Result<()> {
         self.img_trans_ani.reset();
-        self.edge_top_ani.reset();
-        self.edge_bottom_ani.reset();
+        // self.edge_top_ani.reset();
+        // self.edge_bottom_ani.reset();
         Ok(())
     }
 }
