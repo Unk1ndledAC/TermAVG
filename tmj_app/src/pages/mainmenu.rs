@@ -49,12 +49,12 @@ fn draw_shortkey_bar(frame: &mut Frame, area: Rect) {
     let key_style = theme::THEME.key_binding.key;
     let desc_style = theme::THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" ↑ ", key_style),
-        Span::styled("上移 ", desc_style),
-        Span::styled(" ↓ ", key_style),
-        Span::styled("下移 ", desc_style),
+        Span::styled(" ↑/↓ ", key_style),
+        Span::styled("移动 ", desc_style),
         Span::styled(" Enter ", key_style),
         Span::styled("确认", desc_style),
+        Span::styled(" Esc ", key_style),
+        Span::styled("退出", desc_style),
     ])
     .centered();
     frame.render_widget(line, area);
@@ -373,15 +373,10 @@ impl EventDispatcher for MainScreen {
             return;
         }
         match key.code {
-            KeyCode::Down => {
-                self.select_state.borrow_mut().select_next();
-            }
-            KeyCode::Up => {
-                self.select_state.borrow_mut().select_previous();
-            }
-            KeyCode::Enter => {
-                let _ = self.execute_selection();
-            }
+            KeyCode::Down => { self.select_state.borrow_mut().select_next(); }
+            KeyCode::Up => { self.select_state.borrow_mut().select_previous(); }
+            KeyCode::Enter => { let _ = self.execute_selection(); }
+            KeyCode::Esc => { CmdBuffer::push(tmj_core::command::GameCmd::QuitGame); }
             _ => {}
         }
     }

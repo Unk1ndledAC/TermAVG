@@ -33,13 +33,11 @@ fn draw_selecting_shortkey_bar(frame: &mut Frame, area: Rect) {
     let key_style = theme::THEME.key_binding.key;
     let desc_style = theme::THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" ↑/k ", key_style),
-        Span::styled("上移 ", desc_style),
-        Span::styled(" ↓/j ", key_style),
-        Span::styled("下移 ", desc_style),
+        Span::styled(" ↑/↓ ", key_style),
+        Span::styled("移动 ", desc_style),
         Span::styled(" Enter ", key_style),
         Span::styled("保存/新建 ", desc_style),
-        Span::styled(" q/Esc ", key_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("退出", desc_style),
     ])
     .centered();

@@ -34,13 +34,11 @@ fn draw_selecting_shortkey_bar(frame: &mut Frame, area: Rect) {
     let key_style = theme::THEME.key_binding.key;
     let desc_style = theme::THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" ↑/k ", key_style),
-        Span::styled("上移 ", desc_style),
-        Span::styled(" ↓/j ", key_style),
-        Span::styled("下移 ", desc_style),
+        Span::styled(" ↑/↓ ", key_style),
+        Span::styled("移动 ", desc_style),
         Span::styled(" Enter ", key_style),
         Span::styled("加载 ", desc_style),
-        Span::styled(" q/Esc ", key_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("退出", desc_style),
     ])
     .centered();
@@ -53,7 +51,7 @@ fn draw_confirming_shortkey_bar(frame: &mut Frame, area: Rect) {
     let line = Line::from(vec![
         Span::styled(" y ", key_style),
         Span::styled("确认加载 ", desc_style),
-        Span::styled(" n/q/Esc ", key_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("取消", desc_style),
     ])
     .centered();
@@ -235,7 +233,7 @@ impl EventDispatcher for LoadPopItem {
                     self.edit_state = EditState::Selecting;
                     self.hide();
                 }
-                KeyCode::Char('n') | KeyCode::Char('q') | KeyCode::Esc if key.is_release() => {
+                KeyCode::Char('q') | KeyCode::Esc if key.is_release() => {
                     self.edit_state = EditState::Selecting;
                 }
                 _ => {}

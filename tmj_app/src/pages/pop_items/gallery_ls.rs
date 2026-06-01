@@ -18,13 +18,11 @@ fn draw_shortkey_bar(frame: &mut Frame, area: Rect) {
     let key_style = theme::THEME.key_binding.key;
     let desc_style = theme::THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" ↑/k ", key_style),
-        Span::styled("上移 ", desc_style),
-        Span::styled(" ↓/j ", key_style),
-        Span::styled("下移 ", desc_style),
+        Span::styled(" ↑/↓ ", key_style),
+        Span::styled("移动 ", desc_style),
         Span::styled(" Enter ", key_style),
         Span::styled("查看 ", desc_style),
-        Span::styled(" q/Esc ", key_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("退出", desc_style),
     ])
     .centered();
@@ -35,11 +33,9 @@ fn draw_focus_shortkey_bar(frame: &mut Frame, area: Rect) {
     let key_style = theme::THEME.key_binding.key;
     let desc_style = theme::THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" ←/h ", key_style),
-        Span::styled("上一张 ", desc_style),
-        Span::styled(" →/l ", key_style),
-        Span::styled("下一张 ", desc_style),
-        Span::styled(" q/Esc ", key_style),
+        Span::styled(" ←/→ ", key_style),
+        Span::styled("切换 ", desc_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("返回列表", desc_style),
     ])
     .centered();
@@ -249,16 +245,16 @@ impl EventDispatcher for GalleryLsPopItem {
                         self.mode = GalleryMode::Focused;
                     }
                 }
-                KeyCode::Char('j') | KeyCode::Down if !key.is_release() => {
+                KeyCode::Down if !key.is_release() => {
                     self.list_state.select_next();
                 }
-                KeyCode::Char('k') | KeyCode::Up if !key.is_release() => {
+                KeyCode::Up if !key.is_release() => {
                     self.list_state.select_previous();
                 }
-                KeyCode::Char('g') if !key.is_release() => {
+                KeyCode::Home if !key.is_release() => {
                     self.list_state.select_first();
                 }
-                KeyCode::Char('G') if !key.is_release() => {
+                KeyCode::End if !key.is_release() => {
                     self.list_state.select_last();
                 }
                 _ => {}
@@ -270,10 +266,10 @@ impl EventDispatcher for GalleryLsPopItem {
             KeyCode::Char('q') | KeyCode::Esc if key.is_release() => {
                 self.mode = GalleryMode::List;
             }
-            KeyCode::Left | KeyCode::Char('h') if !key.is_release() => {
+            KeyCode::Left if !key.is_release() => {
                 self.focus_prev();
             }
-            KeyCode::Right | KeyCode::Char('l') if !key.is_release() => {
+            KeyCode::Right if !key.is_release() => {
                 self.focus_next();
             }
             _ => {}

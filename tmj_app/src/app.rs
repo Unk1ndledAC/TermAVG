@@ -27,14 +27,11 @@ impl<T: Backend> App<T> {
         App { terminal, game }
     }
 
-    pub fn main_loop<F>(
+    pub fn main_loop(
         app: &mut App<T>,
         receiver: &Receiver<GameEvent>,
         tick_rate: Duration,
-        event_forward: F,
     ) -> Result<()>
-    where
-        F: Fn() -> () + 'static,
     {
         let mut last_tick = std::time::Instant::now();
         let mut game = app.game.borrow_mut();
@@ -51,7 +48,6 @@ impl<T: Backend> App<T> {
                     l.drain_buffer(receiver);
                 }
             });
-            event_forward();
 
             if let Ok(event) = receiver.try_recv() {
                 if !game

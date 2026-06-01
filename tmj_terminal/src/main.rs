@@ -65,8 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let res = App::main_loop(
         &mut app,
         &reciver,
-        Duration::from_millis(FRAME_DURATION.into()),
-        || {}
+        Duration::from_millis(FRAME_DURATION.into())
     );
     //  recorve origin terminal content, close mouse report
     execute!(

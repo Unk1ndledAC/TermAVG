@@ -28,13 +28,11 @@ fn draw_shortkey_bar(frame: &mut Frame, area: Rect) {
     let key_style = theme::THEME.key_binding.key;
     let desc_style = theme::THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" ↑/k ", key_style),
+        Span::styled(" ↑/↓ ", key_style),
         Span::styled("选择 ", desc_style),
-        Span::styled(" ←/h ", key_style),
-        Span::styled("减小 ", desc_style),
-        Span::styled(" →/l ", key_style),
-        Span::styled("增大 ", desc_style),
-        Span::styled(" q/Esc ", key_style),
+        Span::styled(" ←/→ ", key_style),
+        Span::styled("增减 ", desc_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("退出", desc_style),
     ])
     .centered();
@@ -235,10 +233,10 @@ impl EventDispatcher for GameSettingPopItem {
 
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc if key.is_release() => self.hide(),
-            KeyCode::Char('j') | KeyCode::Down if !key.is_release() => self.list_state.select_next(),
-            KeyCode::Char('k') | KeyCode::Up if !key.is_release() => self.list_state.select_previous(),
-            KeyCode::Left | KeyCode::Char('h') if !key.is_release() => self.adjust_selected(-STEP),
-            KeyCode::Right | KeyCode::Char('l') if !key.is_release() => self.adjust_selected(STEP),
+            KeyCode::Down if !key.is_release() => self.list_state.select_next(),
+            KeyCode::Up if !key.is_release() => self.list_state.select_previous(),
+            KeyCode::Left if !key.is_release() => self.adjust_selected(-STEP),
+            KeyCode::Right if !key.is_release() => self.adjust_selected(STEP),
             _ => {}
         }
     }

@@ -65,18 +65,10 @@ impl EventDispatcher for SlotManager {
             return;
         }
         match key.code {
-            KeyCode::Char('j') | KeyCode::Down => {
-                self.list_state.borrow_mut().select_next();
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                self.list_state.borrow_mut().select_previous();
-            }
-            KeyCode::Char('g') => {
-                self.list_state.borrow_mut().select_first();
-            }
-            KeyCode::Char('G') => {
-                self.list_state.borrow_mut().select_last();
-            }
+            KeyCode::Down => { self.list_state.borrow_mut().select_next(); }
+            KeyCode::Up   => { self.list_state.borrow_mut().select_previous(); }
+            KeyCode::Home => { self.list_state.borrow_mut().select_first(); }
+            KeyCode::End  => { self.list_state.borrow_mut().select_last(); }
             _ => {}
         }
     }

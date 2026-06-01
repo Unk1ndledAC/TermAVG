@@ -111,19 +111,13 @@ fn draw_shortkey_bar(frame: &mut ratatui::Frame, area: ratatui::layout::Rect) {
     let desc_style = theme::THEME.key_binding.description;
 
     let line = Line::from(vec![
-        Span::styled(" ↑/k ", key_style),
-        Span::styled("上移 ", desc_style),
-        Span::styled(" ↓/j ", key_style),
-        Span::styled("下移 ", desc_style),
-        Span::styled(" PgUp ", key_style),
-        Span::styled("上翻页 ", desc_style),
-        Span::styled(" PgDn ", key_style),
-        Span::styled("下翻页 ", desc_style),
-        Span::styled(" Home ", key_style),
-        Span::styled("开头 ", desc_style),
-        Span::styled(" End ", key_style),
-        Span::styled("末尾 ", desc_style),
-        Span::styled(" q ", key_style),
+        Span::styled(" ↑/↓ ", key_style),
+        Span::styled("移动 ", desc_style),
+        Span::styled(" PgUp/PgDn ", key_style),
+        Span::styled("翻页 ", desc_style),
+        Span::styled(" Home/End ", key_style),
+        Span::styled("首尾 ", desc_style),
+        Span::styled(" Esc/q ", key_style),
         Span::styled("退出", desc_style),
     ])
     .centered();
@@ -193,14 +187,12 @@ impl EventDispatcher for DialogueHistoryLs {
         let binding = HISTORY_LS.lock().unwrap();
         let records = binding.records();
         match key.code {
-            // 上/ k ：查看更早的消息 → 偏移增大
-            KeyCode::Up | KeyCode::Char('k') if key.is_press() => {
+            KeyCode::Up if key.is_press() => {
                 if self.scroll_offset < total.saturating_sub(1) {
                     self.scroll_offset += 1;
                 }
             }
-            // 下/ j ：查看更新的消息 → 偏移减小
-            KeyCode::Down | KeyCode::Char('j') if key.is_press() => {
+            KeyCode::Down if key.is_press() => {
                 self.scroll_offset = self.scroll_offset.saturating_sub(1);
             }
             // PageUp：向上翻页（更早）

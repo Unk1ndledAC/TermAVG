@@ -48,24 +48,41 @@
 </p>
 
 
+- **双运行模式**：终端 TUI 模式 (`tmj_terminal`) + GPU 加速窗口模式 (`tmj_egui`)
 - 终端渲染：基于 `ratatui` + `crossterm` 的 TUI 绘制与事件处理。
+- GPU 渲染：基于 `eframe` + `soft_ratatui`，支持全屏、1:2 字符网格、CJK 字体。
 - 脚本驱动：内置脚本解析器，支持赋值、调用、`wait`、链式调用等语法。
-- 多模块工作区：`tmj_app`、`tmj_core`、`tmj_macro` 。
-- 可配置启动：通过 `setting.toml` 指定分辨率、资源路径和布局参数。
+- 多模块工作区：`tmj_app`、`tmj_core`、`tmj_macro`、`tmj_terminal`、`tmj_egui`。
+- 可配置启动：通过 `setting.toml` 指定分辨率、字体路径、资源路径和布局参数。
 - 音频与资源：支持角色立绘、表情资源和音频播放。
 
 ## 项目结构
 
 ```text
-tmj/
-├─ src/                # 入口（main）
+engine/
 ├─ tmj_app/            # 游戏逻辑、页面、脚本变量与渲染流程
 ├─ tmj_core/           # 脚本系统、事件系统、资源路径与通用能力
 ├─ tmj_macro/          # 过程宏
-├─ resource/           # 脚本与资源文件（示例角色等）
+├─ tmj_terminal/       # TUI 模式入口（crossterm 终端渲染）
+├─ tmj_egui/           # GPU 模式入口（eframe + soft_ratatui 窗口渲染）
+├─ resource/           # 脚本与资源文件（脚本、字体、图片等）
 ├─ setting.toml        # 运行配置
+├─ layout.toml         # 布局配置
 └─ README.md
 ```
+
+### 运行模式
+
+**终端 TUI 模式**（原有）：
+```bash
+cargo run -p tmj_terminal 2> debug.txt
+```
+
+**GPU 窗口模式**（新增）：
+```bash
+cargo run -p tmj_egui
+```
+启动后自动全屏，使用 1:2 字符网格渲染，支持 CJK 字体。
 
 ## 快速开始
 
@@ -98,6 +115,8 @@ cargo run 2> debug.txt
 
 ```toml
 resolution = [240, 67]
+font = "resource/font/SarasaTermCL-Regular.ttf"
+font_bold = "resource/font/SarasaTermCL-Bold.ttf"
 preprogress_script = ["resource/script_example.fs"]
 is_force_skipable = false
 save_dir = "save"
@@ -115,6 +134,8 @@ max_history_ls = 60
 ### setting 字段说明
 
 - `resolution: [w, h]`：逻辑渲染分辨率（字符格单位），游戏主画面会按这个尺寸居中绘制。
+- `font`：GPU 模式使用的字体文件路径（推荐 CJK 等宽字体如 Sarasa Term CL）。
+- `font_bold`：GPU 模式使用的粗体字体文件路径（可选）。
 - `preprogress_script: []`：需要预处理的脚本列表。启动时会把这些 `*.fs` 转成带段号的 `*.fss`（见下文机制）。
 - `is_force_skipable`：预留字段，当前版本尚未在运行时逻辑中消费。
 - `save_dir`：存档目录（普通槽位与 `temp.save` 都在这里）。
@@ -254,12 +275,25 @@ max_history_ls = 60
 - 与脚本相关的核心代码位于 `tmj_core/src/script/`。
 - 引擎页面和渲染流程位于 `tmj_app/src/pages/` 与 `tmj_app/src/game.rs`。
 
+### 快捷键规范
+
+所有界面统一使用以下快捷键：
+
+| 按键 | 功能 |
+|------|------|
+| `↑/↓` 或 `←/→` | 方向移动 / 选择 |
+| `Enter` | 确认 / 继续 |
+| `Esc` 或 `q` | 返回 / 退出 |
+
+各弹窗和页面底部均有快捷键提示栏。
+
 ## 依赖
 
 - TUI: [ratatui](https://github.com/ratatui/ratatui), [crossterm](https://github.com/crossterm-rs/crossterm)
+- GPU 渲染: [eframe](https://github.com/emilk/egui), [soft_ratatui](https://github.com/gold-silver-copper/soft_ratatui)
 - 序列化: [serde](https://github.com/serde-rs/serde), [toml](https://github.com/toml-rs/toml)
 - 音频: [rodio](https://github.com/RustAudio/rodio)
-- 其他: `tracing`, `anyhow`, `image`, `strum`
+- 其他: `tracing`, `anyhow`, `image`, `strum`, `fontdue`, `cosmic-text`
 
 ## 贡献
 

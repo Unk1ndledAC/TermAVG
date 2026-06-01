@@ -285,20 +285,20 @@ fn draw_shortkey_bar(
     let key = THEME.key_binding.key;
     let desc = THEME.key_binding.description;
     let line = Line::from(vec![
-        Span::styled(" Click/Enter ", key),
-        Span::styled(" Next ", desc),
+        Span::styled(" Enter/点击 ", key),
+        Span::styled("继续", desc),
         Span::styled(" s ", key),
-        Span::styled(" Save ", desc),
+        Span::styled("保存", desc),
         Span::styled(" l ", key),
-        Span::styled(" Load ", desc),
+        Span::styled("读取", desc),
         Span::styled(" c ", key),
-        Span::styled(" Setting ", desc),
+        Span::styled("设置", desc),
         Span::styled(" h ", key),
-        Span::styled(" HideFrame ", desc),
-        Span::styled(" Q/Esc ", key),
-        Span::styled(" Quit ", desc),
+        Span::styled("隐藏面板", desc),
+        Span::styled(" Esc/q ", key),
+        Span::styled("返回菜单", desc),
         Span::styled(" ↑ ", key),
-        Span::styled(" History ", desc),
+        Span::styled("历史", desc),
     ]);
     Paragraph::new(line)
         .alignment(Alignment::Center)
