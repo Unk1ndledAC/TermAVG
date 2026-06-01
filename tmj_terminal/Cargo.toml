@@ -1,0 +1,23 @@
+[package]
+name = "tmj_terminal"
+version = "0.1.0"
+edition = "2024"
+publish = ["rsproxy"]
+
+[lints]
+workspace = true
+
+[dependencies]
+tmj_core = { path = "../tmj_core" }
+tmj_app = { path = "../tmj_app" }
+
+serde = {workspace = true}
+ratatui = {workspace = true}
+strum = {workspace = true}
+strum_macros =  {workspace = true}
+crossterm = {workspace = true}
+tracing =  {workspace = true}
+tracing-subscriber = {workspace = true}
+anyhow = {workspace = true}
+image = {workspace = true}
+chrono = {workspace = true}

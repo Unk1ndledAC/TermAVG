@@ -1,5 +1,7 @@
 use anyhow::Context;
 use anyhow::Result;
+use ratatui::Terminal;
+use ratatui::prelude::Backend;
 use std::cell::RefCell;
 use std::sync::mpsc::Receiver;
 use std::thread;
@@ -7,28 +9,33 @@ use std::time::Duration;
 use tmj_core::command::CmdBuffer;
 use tmj_core::event::EventManager;
 
-use ratatui::DefaultTerminal;
-
 use tmj_core::event::{GameEvent, handler::EventDispatcher};
 
 use crate::game::Game;
 
-pub struct App {
-    pub terminal: DefaultTerminal,
+pub struct App<T: Backend> {
+    pub terminal: Terminal<T>,
     pub game: RefCell<Game>,
 }
 
-impl App {
-    pub fn new(terminal: DefaultTerminal) -> App {
+impl<T: Backend> App<T> {
+    pub fn new(terminal: Terminal<T>) -> Self
+    where
+        T: Backend,
+    {
         let game: RefCell<Game> = Game::new().into();
         App { terminal, game }
     }
 
-    pub fn main_loop(
-        app: &mut App,
+    pub fn main_loop<F>(
+        app: &mut App<T>,
         receiver: &Receiver<GameEvent>,
         tick_rate: Duration,
-    ) -> Result<()> {
+        event_forward: F,
+    ) -> Result<()>
+    where
+        F: Fn() -> () + 'static,
+    {
         let mut last_tick = std::time::Instant::now();
         let mut game = app.game.borrow_mut();
         EventManager::with_looper(|l| {
@@ -44,6 +51,7 @@ impl App {
                     l.drain_buffer(receiver);
                 }
             });
+            event_forward();
 
             if let Ok(event) = receiver.try_recv() {
                 if !game

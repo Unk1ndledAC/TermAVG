@@ -283,7 +283,7 @@ impl EventDispatcher for Game {
         self.game_flow.borrow_mut().force_quit();
     }
 
-    fn handle_event(&mut self, event: &GameEvent) -> Result<bool> {
+    fn handle_event(&mut self, event: &GameEvent) -> anyhow::Result<bool> {
         match event {
             GameEvent::CtKeyEvent(key) => self.on_key(key),
             GameEvent::CtMouseEvent(mouse) => self.on_mouse(mouse),

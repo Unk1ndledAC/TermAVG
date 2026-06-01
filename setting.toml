@@ -1,4 +1,6 @@
 resolution = [240, 67]
+font = "resource/font/SarasaTermCL-Regular.ttf"
+font_bold = "resource/font/SarasaTermCL-Bold.ttf"
 is_force_skipable = false
 save_dir = "save"
 gallery_dir = "resource/gallery"

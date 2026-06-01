@@ -15,6 +15,8 @@ pub struct MainMenuSessionBgMapItem {
 #[serde(default)]
 pub struct GameSetting {
     pub resolution: (u16, u16),
+    pub font: PathBuf,
+    pub font_bold: Option<PathBuf>,
     pub preprogress_script: Vec<String>, // 需要预处理的脚本路径
     pub is_force_skipable: bool,
     pub save_dir: PathBuf,
@@ -76,7 +78,9 @@ impl Default for GameSetting {
     fn default() -> Self {
         let resolution = (240, 67);
         Self {
-            resolution: resolution, // 3: 2, 但是注意这里的尺寸也是按照字符宽高比为1:2来计算的
+            resolution: resolution,
+            font: "resource/font/SarasaTermCL-Regular.ttf".into(),
+            font_bold: Some("resource/font/SarasaTermCL-Bold.ttf".into()),
             is_force_skipable: false,
             save_dir: "save".into(),
             gallery_dir: "resource/gallery".into(),

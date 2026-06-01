@@ -1,0 +1,24 @@
+[package]
+name = "tmj_egui"
+version = "0.1.0"
+edition = "2024"
+publish = ["rsproxy"]
+
+[lints]
+workspace = true
+
+[dependencies]
+ratatui = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tmj_core = { path = "../tmj_core" }
+tmj_app = { path = "../tmj_app" }
+crossterm = { workspace = true }
+chrono = { workspace = true }
+
+eframe = { version = "0.34.3"}
+soft_ratatui = { version = "0.2.0", features = ["cosmic-text"]}
+terminput = { version = "0.5.14"}
+terminput-egui = { version = "0.6.0"}
+terminput-crossterm = { version = "0.4.10"}

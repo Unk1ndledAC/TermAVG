@@ -10,8 +10,8 @@ use tmj_core::audio::AudioOp;
 use tmj_core::command::{CmdBuffer, GameCmd};
 use tmj_core::event::handler::EventDispatcher;
 use tmj_core::script::{
-    Interpreter, InterpreterStatus, ScriptContext, ScriptParser, SerializableContext,
-    DEFAULT_WAIT_SKIP_BUFFER_SECS,
+    DEFAULT_WAIT_SKIP_BUFFER_SECS, Interpreter, InterpreterStatus, ScriptContext, ScriptParser,
+    SerializableContext,
 };
 use tmj_core::{pathes, script};
 use tracing::info;
@@ -154,7 +154,12 @@ impl Screen for DialogueScene {
     }
 
     fn sleep(&mut self) -> anyhow::Result<super::ScreenActRespond> {
-        CmdBuffer::push(GameCmd::SaveTo(tmj_core::command::SaveSlot::Temp));
+        // 点完自然退出的时候这里为空,不会去保存
+        if self.pre_session_ctx_dump.is_some() {
+            CmdBuffer::push(GameCmd::SaveTo(tmj_core::command::SaveSlot::Temp));
+        } else {
+            tracing::warn!("when dialouge sleep, no pre_session_ctx_dump, skip save temp");
+        }
         self.stop_audio()?;
         let resp = ScreenActRespond::default();
         Ok(resp)
@@ -278,7 +283,8 @@ impl DialogueScene {
         for behaviour in self.script_behaviours.values_mut().values_mut() {
             behaviour.sync_from_ctx(self.interpreter.borrow().context())?;
         }
-        self.apply_current_session().context("apply current session failed")?;
+        self.apply_current_session()
+            .context("apply current session failed")?;
         self.init_audio().context("init_audio failed")?;
         Ok(())
     }
@@ -324,7 +330,8 @@ impl Draw for DialogueScene {
 
 impl DialogueScene {
     fn is_any_animating(&self) -> bool {
-        let animing_bs: Vec<_> = self.script_behaviours
+        let animing_bs: Vec<_> = self
+            .script_behaviours
             .behaviours
             .borrow()
             // .values()
@@ -332,11 +339,10 @@ impl DialogueScene {
             .filter(|(_, b)| b.is_animating())
             .map(|(name, _)| name.clone())
             .collect();
-            // .any(|b| b.is_animating())
+        // .any(|b| b.is_animating())
         if !animing_bs.is_empty() {
-        tracing::info!("animing behaviours {:?}", animing_bs);
-return true;
-
+            tracing::info!("animing behaviours {:?}", animing_bs);
+            return true;
         }
         return false;
     }
@@ -436,11 +442,10 @@ return true;
     }
 
     fn on_try_push_dialouge(&mut self) -> anyhow::Result<bool> {
-        
         if self.interpreter.borrow().is_any_executor_waiting() {
             self.interpreter
-            .borrow_mut()
-            .skip_blocking_waits_with_buffer(self.wait_skip_buffer_secs());
+                .borrow_mut()
+                .skip_blocking_waits_with_buffer(self.wait_skip_buffer_secs());
             self.force_over_all_animations()?;
             return Ok(false);
         }
@@ -565,7 +570,7 @@ impl EventDispatcher for DialogueScene {
         }
         match mouse.kind {
             MouseEventKind::Up(btn) => {
-                if btn == MouseButton::Left {                        
+                if btn == MouseButton::Left {
                     match self
                         .on_try_push_dialouge()
                         .context("try push dialouge failed!")

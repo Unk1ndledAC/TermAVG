@@ -61,6 +61,16 @@ impl LayerBehaviour {
         ))
     }
 
+    pub fn export_reset(&self, layer: &TableRef) -> anyhow::Result<()> {
+        let ve_name = Self::get_layer_ve_name(layer)?;
+        if let Some(anim_map) = self.layer_ves_anim_map.borrow_mut().get_mut(&ve_name) {
+            for (_, ani) in anim_map.iter_mut() {
+                ani.reset();
+            }
+        }
+        Ok(())
+    }
+
     fn get_layer_ve_name(layer: &TableRef) -> anyhow::Result<String> {
         let name = parse_required_member(layer, layer::NAME, ScriptValue::as_string)?;
         Ok(format!("layer.{name}"))

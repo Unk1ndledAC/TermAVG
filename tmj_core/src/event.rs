@@ -5,6 +5,7 @@ pub mod sender;
 pub mod manager;
 pub use manager::EventManager;
 pub mod handler;
+pub mod provider;
 
 
 
