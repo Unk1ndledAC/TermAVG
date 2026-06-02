@@ -27,14 +27,13 @@ impl FormatTime for ChinaLocalTime {
     }
 }
 
-unsafe extern "system" {
-    fn GetSystemMetrics(nIndex: i32) -> i32;
-}
-const SM_CXSCREEN: i32 = 0;
-const SM_CYSCREEN: i32 = 1;
-
 fn screen_size() -> (f32, f32) {
-    (unsafe { GetSystemMetrics(SM_CXSCREEN) } as f32, unsafe { GetSystemMetrics(SM_CYSCREEN) } as f32)
+    if let Ok(displays) = display_info::DisplayInfo::all() {
+        if let Some(d) = displays.iter().find(|d| d.is_primary).or(displays.first()) {
+            return (d.width as f32, d.height as f32);
+        }
+    }
+    (1920.0, 1080.0)
 }
 
 fn main() -> eframe::Result {
