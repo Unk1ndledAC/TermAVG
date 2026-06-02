@@ -25,7 +25,7 @@ pub struct VEnvEffect;
 impl VEnvEffect {
     pub fn stop(fade_duration: Duration) {
         let fade_wait = fade_duration.saturating_add(Duration::from_millis(50));
-        AUDIOM.with_borrow_mut(|a| {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             if let Some(t) = a.track_mut(&Tracks::EnvEffect) {
                 if fade_duration.is_zero() {
                     t.stop();
@@ -65,7 +65,7 @@ impl VEnvEffect {
             let source = load_audio(path)
                 .map_err(|e| anyhow::anyhow!("env_effect: failed to load audio: {e}"))?;
             let source: AudioSource = Box::new(source.amplify(source_volume));
-            AUDIOM.with_borrow_mut(|a| {
+            AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
                 if let Some(t) = a.track_mut(&Tracks::EnvEffect) {
                     if fade_duration.is_zero() {
                         t.stop();

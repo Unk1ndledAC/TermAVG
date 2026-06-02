@@ -7,6 +7,7 @@ use std::error::Error;
 use std::fs::OpenOptions;
 use std::time::Duration;
 use tmj_app::app::App;
+use tmj_app::audio::AUDIOM;
 use tmj_core::event::EventManager;
 use tmj_core::event::looper::EventLooper;
 use tmj_core::event::sender::EventSender;
@@ -33,6 +34,14 @@ fn init_term() -> ratatui::Terminal<ratatui::prelude::CrosstermBackend<std::io::
     let mut stdout = std::io::stdout();
     // switch terminal buffer, enable mouse trace
     let _ = execute!(stdout, EnterAlternateScreen, EnableMouseCapture);
+    // 保证release事件发送
+    let _ = execute!(
+        stdout,
+        crossterm::event::PushKeyboardEnhancementFlags(
+            crossterm::event::KeyboardEnhancementFlags::REPORT_EVENT_TYPES
+            | crossterm::event::KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
+        )
+    );
     ratatui::init()
 }
 
@@ -67,6 +76,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         &reciver,
         Duration::from_millis(FRAME_DURATION.into())
     );
+    EventManager::with_looper(|l| l.stop());
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        AUDIOM.with(|a| { let _ = a.replace(None); });
+    }));
     //  recorve origin terminal content, close mouse report
     execute!(
         app.terminal.backend_mut(),
@@ -77,5 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Err(err) = res {
         info!("{err:?}");
     }
-    Ok(())
+    ratatui::restore();
+    tracing::info!("process exit");
+    std::process::exit(0);
 }

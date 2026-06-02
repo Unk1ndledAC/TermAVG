@@ -14,7 +14,7 @@ impl VVoice {
         let fade_wait = fade_duration.saturating_add(Duration::from_millis(50));
 
         if path.is_empty() {
-            AUDIOM.with_borrow_mut(|a| {
+            AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
                 if let Some(t) = a.track_mut(&Tracks::Voice) {
                     if fade_duration.is_zero() {
                         t.stop();
@@ -33,7 +33,7 @@ impl VVoice {
         let source =
             load_audio(path).map_err(|e| anyhow::anyhow!("voice: failed to load audio: {e}"))?;
         let source: AudioSource = Box::new(source.amplify(source_volume));
-        AUDIOM.with_borrow_mut(|a| {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             if let Some(t) = a.track_mut(&Tracks::Voice) {
                 if fade_duration.is_zero() {
                     t.stop();

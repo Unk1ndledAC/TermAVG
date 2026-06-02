@@ -25,7 +25,7 @@ impl VBgm {
     pub fn stop(fade_duration: Duration) {
         let fade_wait = fade_duration.saturating_add(Duration::from_millis(50));
 
-        AUDIOM.with_borrow_mut(|a| {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             let track = a.track_mut(&audio::Tracks::Bgm).unwrap();
             if fade_duration.is_zero() {
                 track.stop();
@@ -54,7 +54,7 @@ impl VBgm {
         let path_log = path.to_string();
         let fade_type = fade_type.to_string();
 
-        AUDIOM.with_borrow_mut(move |a| {
+        AUDIOM.with_borrow_mut(move |a| { let a = a.as_mut().unwrap();
             tracing::info!("bgm fading! {}", path_log);
             match fade_type.as_str() {
                 audio::FADE_IN => {

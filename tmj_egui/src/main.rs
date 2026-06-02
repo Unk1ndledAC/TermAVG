@@ -6,6 +6,7 @@ use eframe::egui::{self, ColorImage, TextureOptions, ViewportBuilder, ViewportCo
 use ratatui::Terminal;
 use soft_ratatui::{CosmicText, SoftBackend};
 use tmj_app::app::App;
+use tmj_app::audio::AUDIOM;
 use tmj_app::setting::SETTING;
 use tmj_core::command::CmdBuffer;
 use tmj_core::event::handler::EventDispatcher;
@@ -149,6 +150,10 @@ fn main() -> eframe::Result {
         ctx.request_repaint_after(remaining);
 
         if app.game.borrow().game_flow.borrow().is_ready_quit() {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                AUDIOM.with(|a| { let _ = a.replace(None); });
+            }));
+            EventManager::with_looper(|l| l.stop());
             ctx.send_viewport_cmd(ViewportCommand::Close);
         }
     })

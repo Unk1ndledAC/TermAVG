@@ -1,5 +1,4 @@
 use anyhow::Context;
-use anyhow::Result;
 use ratatui::Terminal;
 use ratatui::prelude::Backend;
 use std::cell::RefCell;
@@ -31,7 +30,7 @@ impl<T: Backend> App<T> {
         app: &mut App<T>,
         receiver: &Receiver<GameEvent>,
         tick_rate: Duration,
-    ) -> Result<()>
+    ) -> anyhow::Result<()>
     {
         let mut last_tick = std::time::Instant::now();
         let mut game = app.game.borrow_mut();
@@ -64,7 +63,7 @@ impl<T: Backend> App<T> {
                 game.handle_cmd(&cmd)
                     .context(format!("game handle cmd:{} failed!", cmd))?;
             }
-            app.terminal.draw(|f| game.draw(f));
+            app.terminal.draw(|f| game.draw(f)).map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             thread::sleep(tick_rate.saturating_sub(last_tick.elapsed()));
 

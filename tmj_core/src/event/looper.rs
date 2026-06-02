@@ -78,7 +78,16 @@ impl EventLooper {
         self.warmup_duration = duration;
     }
 
-    pub fn stop(&self) {
+    pub fn stop(&mut self) {
+        self.close_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+        if let Some(handle) = self._thread_handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+impl Drop for EventLooper {
+    fn drop(&mut self) {
         self.close_flag.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 }

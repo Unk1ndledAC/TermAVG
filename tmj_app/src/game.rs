@@ -63,6 +63,7 @@ impl Game {
     pub fn new() -> Game {
         // 初始化音频轨道
         AUDIOM.with_borrow_mut(|a| {
+            let a = a.as_mut().unwrap();
             a.create_track(
                 Tracks::Bgm,
                 Tracks::Bgm.to_string(),
@@ -270,6 +271,7 @@ impl Game {
 impl EventDispatcher for Game {
     fn handle_tick(&mut self, tick: std::time::Duration) {
         AUDIOM.with_borrow_mut(|a| {
+            let a = a.as_mut().unwrap();
             a.update(tick);
         });
         if self.game_flow.borrow_mut().cur_screen().is_none() {

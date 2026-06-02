@@ -96,7 +96,7 @@ impl UserSetting {
             .context(format!("{var_name} must be number"))?
             .clamp(0.0, 1.0) as f32;
 
-        AUDIOM.with_borrow_mut(|a| match var_name {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap(); match var_name {
             BGM_VOLUME => {
                 if let Some(track) = a.track_mut(&Tracks::Bgm) {
                     track.set_volume_multiplier(volume);
@@ -119,7 +119,7 @@ impl UserSetting {
                 }
             }
             _ => {}
-        });
+        }});
         Ok(())
     }
 

@@ -36,7 +36,7 @@ pub fn load_audio_from_abspath(path: &PathBuf) -> Result<AudioSource> {
 }
 
 thread_local! {
-    pub static AUDIOM: RefCell<AudioManager<Tracks>> = RefCell::new(AudioManager::new().unwrap());
+    pub static AUDIOM: RefCell<Option<AudioManager<Tracks>>> = RefCell::new(Some(AudioManager::new().unwrap()));
 }
 
 script_sym!(FADE_IN, Member, "BGM 淡入模式标识");

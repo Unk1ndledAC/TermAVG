@@ -81,7 +81,7 @@ impl Screen for MainScreen {
         if let Some(path) = self.current_bgm_path() {
             match load_audio_from_abspath(path) {
                 Ok(bgm) => {
-                    AUDIOM.with_borrow_mut(move |a| {
+                    AUDIOM.with_borrow_mut(move |a| { let a = a.as_mut().unwrap();
                         a.track_mut(&crate::audio::Tracks::MainMenuBgm)
                             .unwrap_or_else(|| panic!("MainMenuBgm track not found"))
                             .queue(audio::AudioOp::play(bgm, 1.0));
@@ -97,7 +97,7 @@ impl Screen for MainScreen {
     }
 
     fn sleep(&mut self) -> anyhow::Result<super::ScreenActRespond> {
-        AUDIOM.with_borrow_mut(|a| {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             a.track_mut(&crate::audio::Tracks::MainMenuBgm)
                 .unwrap()
                 .stop();

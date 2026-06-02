@@ -118,7 +118,7 @@ impl DialogueScene {
             .get_val(&env_path)
             .unwrap();
 
-        AUDIOM.with_borrow_mut(|a| {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             if bgm_path.is_string() && !bgm_path.as_string().unwrap().is_empty() {
                 let source = load_audio(bgm_path.as_string().unwrap())?;
                 a.track_mut(&audio::Tracks::Bgm)
@@ -137,7 +137,7 @@ impl DialogueScene {
     }
 
     fn stop_audio(&self) -> anyhow::Result<()> {
-        AUDIOM.with_borrow_mut(|a| {
+        AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             a.stop_all();
             Ok(())
         })
