@@ -17,6 +17,7 @@ script_sym!(BGM, Type, "背景音乐全局对象");
 script_sym!(SET, Function, "设置并播放 BGM");
 script_sym!(STOP, Function, "停止 BGM（可淡出）");
 script_sym!(M_SOURCE, Member, "当前 BGM 资源路径");
+script_sym!(M_VOLUME, Member, "调用 set 时设置的源音量");
 
 #[derive(TypeName)]
 pub struct VBgm;
@@ -47,6 +48,7 @@ impl VBgm {
         source_volume: f32,
     ) -> anyhow::Result<()> {
         Interpreter::eval(format!("set {BGM}.{M_SOURCE} \"{}\"", path), ctx.clone())?;
+        Interpreter::eval(format!("set {BGM}.{M_VOLUME} {source_volume}"), ctx.clone())?;
 
         let source = load_audio(path).context("!!! bgm load faild")?;
         let source: AudioSource = Box::new(source.amplify(source_volume));
@@ -97,6 +99,7 @@ impl BaseVariable for VBgm {
         ctx.set_global_table(BGM);
 
         let _ = ctx.set_table_member(BGM, M_SOURCE, ScriptValue::Nil);
+        let _ = ctx.set_table_member(BGM, M_VOLUME, ScriptValue::Float(1.0));
 
         let _ = ctx.set_table_func(BGM, STOP, |ctx, args| {
             let fade_duration = script_args::parse_duration(&args, 0, 1.0);

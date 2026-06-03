@@ -1,17 +1,18 @@
 use crate::pages::behaviour::BehaviourMap;
 use anyhow::Context;
+use rodio::Source;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::Rect;
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
-use tmj_core::audio::AudioOp;
+use tmj_core::audio::{AudioOp, AudioSource};
 use tmj_core::command::{CmdBuffer, GameCmd};
 use tmj_core::event::handler::EventDispatcher;
 use tmj_core::script::{
     DEFAULT_WAIT_SKIP_BUFFER_SECS, Interpreter, InterpreterStatus, ScriptContext, ScriptParser,
-    SerializableContext,
+    ScriptValue, SerializableContext,
 };
 use tmj_core::{pathes, script};
 use tracing::info;
@@ -96,37 +97,32 @@ pub struct DialogueScene {
 
 impl DialogueScene {
     fn init_audio(&self) -> anyhow::Result<()> {
-        let bgm_path = format!("{}.{}", var_bgm::BGM, var_bgm::M_SOURCE);
-        let bgm_path = self
-            .get_interpreter()
-            .borrow()
-            .context()
-            .borrow()
-            .get_val(&bgm_path)
-            .unwrap();
+        let interpreter = self.get_interpreter();
+        let i = interpreter.borrow();
+        let c = i.context();
+        let ctx = c.borrow();
+        let get_val = |name: &str| -> ScriptValue {
+            ctx.get_val(name).unwrap_or(ScriptValue::Nil)
+        };
 
-        let env_path = format!(
-            "{}.{}",
-            var_env_effect::ENV_EFFECT,
-            var_env_effect::M_SOURCE
-        );
-        let env_path_val = self
-            .get_interpreter()
-            .borrow()
-            .context()
-            .borrow()
-            .get_val(&env_path)
-            .unwrap();
+        let bgm_path = get_val(&format!("{}.{}", var_bgm::BGM, var_bgm::M_SOURCE));
+        let bgm_vol = get_val(&format!("{}.{}", var_bgm::BGM, var_bgm::M_VOLUME));
+        let env_path = get_val(&format!("{}.{}", var_env_effect::ENV_EFFECT, var_env_effect::M_SOURCE));
+        let env_vol = get_val(&format!("{}.{}", var_env_effect::ENV_EFFECT, var_env_effect::M_VOLUME));
+
+        let vol = |v: ScriptValue| v.to_number().unwrap_or(1.0) as f32;
 
         AUDIOM.with_borrow_mut(|a| { let a = a.as_mut().unwrap();
             if bgm_path.is_string() && !bgm_path.as_string().unwrap().is_empty() {
                 let source = load_audio(bgm_path.as_string().unwrap())?;
-                a.track_mut(&audio::Tracks::Bgm)
-                    .unwrap()
-                    .fade_in(source, Duration::from_millis(100));
+                let source: AudioSource = Box::new(source.amplify(vol(bgm_vol)));
+                let t = a.track_mut(&audio::Tracks::Bgm).unwrap();
+                t.stop();
+                t.fade_in(source, Duration::from_millis(100));
             }
-            if env_path_val.is_string() && !env_path_val.as_string().unwrap().is_empty() {
-                let source = load_audio(env_path_val.as_string().unwrap())?;
+            if env_path.is_string() && !env_path.as_string().unwrap().is_empty() {
+                let source = load_audio(env_path.as_string().unwrap())?;
+                let source: AudioSource = Box::new(source.amplify(vol(env_vol)));
                 if let Some(t) = a.track_mut(&audio::Tracks::EnvEffect) {
                     t.stop();
                     t.queue(AudioOp::play(source, 1.0));
@@ -148,7 +144,6 @@ impl Screen for DialogueScene {
         &mut self,
         _named_args: &crate::gameflow::NamedArgs,
     ) -> anyhow::Result<super::ScreenActRespond> {
-        self.init_audio()?;
         let resp = ScreenActRespond::default();
         Ok(resp)
     }
@@ -273,6 +268,7 @@ impl DialogueScene {
             behaviour.sync_from_ctx(self.interpreter.borrow().context())?;
         }
         self.apply_current_session()?;
+        self.init_audio().context("init_audio failed")?;
         Ok(())
     }
 
@@ -545,9 +541,6 @@ impl EventDispatcher for DialogueScene {
                     .get_or_insert_with(GameSettingPopItem::new)
                     .show();
             }
-            KeyCode::Char('h') => {
-                self.toggle_dialouge();
-            }
             KeyCode::Up => {
                 self.pop_items
                     .get_or_insert_with(DialogueHistoryLs::new)
@@ -580,8 +573,6 @@ impl EventDispatcher for DialogueScene {
                         }
                         _ => {}
                     };
-                } else if btn == MouseButton::Right {
-                    self.toggle_dialouge();
                 }
             }
             _ => {}

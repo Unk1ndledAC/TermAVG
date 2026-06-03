@@ -151,6 +151,10 @@ impl PopItem for SavePopItem {
     }
 }
 
+fn is_safe_filename_char(c: char) -> bool {
+    matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | ' ' | '-' | '_' | '.')
+}
+
 impl EventDispatcher for SavePopItem {
     fn on_key(&mut self, key: &ratatui::crossterm::event::KeyEvent) {
         if self.is_hide() {
@@ -185,7 +189,7 @@ impl EventDispatcher for SavePopItem {
                 KeyCode::Backspace if !key.is_release() => {
                     self.renaming.pop();
                 }
-                KeyCode::Char(c) if !key.is_release() => {
+                KeyCode::Char(c) if !key.is_release() && is_safe_filename_char(c) => {
                     self.renaming.push(c);
                 }
                 KeyCode::Enter if key.is_release() => {

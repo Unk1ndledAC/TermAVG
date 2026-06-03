@@ -28,13 +28,13 @@ impl FormatTime for ChinaLocalTime {
     }
 }
 
-fn screen_size() -> (f32, f32) {
+fn screen_size() -> (f32, f32, f32) {
     if let Ok(displays) = display_info::DisplayInfo::all() {
         if let Some(d) = displays.iter().find(|d| d.is_primary).or(displays.first()) {
-            return (d.width as f32, d.height as f32);
+            return (d.width as f32, d.height as f32, d.scale_factor.max(1.0));
         }
     }
-    (1920.0, 1080.0)
+    (1920.0, 1080.0, 1.0)
 }
 
 fn main() -> eframe::Result {
@@ -57,25 +57,28 @@ fn main() -> eframe::Result {
     let font_data = std::fs::read(&font_path)
         .unwrap_or_else(|_| panic!("font not found: {}", font_path.display()));
 
-    let (scr_w, scr_h) = screen_size();
-    let raw = scr_h / 67.0;
-    let cell_h = (((raw / 2.0).floor() * 2.0) as u32).max(16).min(18);
+    let (scr_w, scr_h, dpi) = screen_size();
+    let cols = SETTING.resolution.0;
+    let rows = SETTING.resolution.1;
+    let dpi_f = dpi.max(1.0);
+    let raw = scr_h / dpi_f / rows as f32;
+    let cell_h = (((raw / 2.0).floor() * 2.0) as u32).max(12).min(24);
     let cell_w = cell_h / 2;
     let font_size = cell_h;
 
-    let mut backend = SoftBackend::<CosmicText>::new(240, 67, font_size as i32, &font_data);
+    let mut backend = SoftBackend::<CosmicText>::new(cols, rows, font_size as i32, &font_data);
     backend.char_width = cell_w as usize;
     backend.char_height = cell_h as usize;
-    backend.resize(240, 67);
+    backend.resize(cols, rows);
 
-    let area = ratatui::layout::Rect::new(0, 0, 240, 67);
+    let area = ratatui::layout::Rect::new(0, 0, cols, rows);
     backend.buffer.set_style(area, ratatui::style::Style::new().bg(ratatui::style::Color::Black));
     backend.redraw();
 
     let pix_w = backend.get_pixmap_width() as f32;
     let pix_h = backend.get_pixmap_height() as f32;
 
-    tracing::info!("screen {scr_w}x{scr_h} cell {cell_w}x{cell_h} font_size {font_size} pixmap {pix_w}x{pix_h}");
+    tracing::info!("screen {scr_w}x{scr_h} dpi {dpi_f} cell {cell_w}x{cell_h} font_size {font_size} pixmap {pix_w}x{pix_h}");
 
     let terminal = Terminal::new(backend).unwrap();
     let mut app = App::new(terminal);

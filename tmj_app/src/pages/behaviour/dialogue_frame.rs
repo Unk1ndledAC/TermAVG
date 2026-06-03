@@ -293,8 +293,6 @@ fn draw_shortkey_bar(
         Span::styled("读取", desc),
         Span::styled(" c ", key),
         Span::styled("设置", desc),
-        Span::styled(" h ", key),
-        Span::styled("隐藏面板", desc),
         Span::styled(" Esc/q ", key),
         Span::styled("返回菜单", desc),
         Span::styled(" ↑ ", key),

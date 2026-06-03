@@ -35,7 +35,10 @@ pub struct Slot {
 impl Slot {
     pub fn ensure_slot_path(&mut self) -> anyhow::Result<PathBuf> {
         if self.path.is_none() {
-            let file_name = format!("{}_{}.save", self.id, self.name);
+            let safe_name: String = self.name.chars()
+                .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' || c == ' ' { c } else { '_' })
+                .collect();
+            let file_name = format!("{}_{}.save", self.id, safe_name);
             let mut path = SETTING.abs_save_dir()?;
             path.push(file_name);
             self.path = Some(path);
@@ -133,10 +136,8 @@ impl SlotManager {
                     if let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
                         if re.is_match(filename) {
                             let file_prefix = path.file_prefix().unwrap().to_str().unwrap().to_string();
-                            let splits: Vec<String> =
-                                file_prefix.split('_').map(|s| s.to_string()).collect();
-                            let id: u8 = splits[0].parse().unwrap();
-                            let name = splits[1].clone();
+                            let id = file_prefix.splitn(2, '_').next().and_then(|s| s.parse::<u8>().ok())?;
+                            let name = file_prefix.splitn(2, '_').nth(1).unwrap_or("").to_string();
                             let meta_data = std::fs::metadata(&path).ok().unwrap();
                             let modify_time: time::OffsetDateTime =
                                 meta_data.modified().unwrap().into();

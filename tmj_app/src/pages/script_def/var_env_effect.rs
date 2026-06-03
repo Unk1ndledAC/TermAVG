@@ -17,6 +17,7 @@ script_sym!(ENV_EFFECT, Type, "环境音效全局对象");
 script_sym!(SET, Function, "设置并播放环境音");
 script_sym!(STOP, Function, "停止环境音（可淡出）");
 script_sym!(M_SOURCE, Member, "当前环境音资源路径");
+script_sym!(M_VOLUME, Member, "调用 set 时设置的源音量");
 pub const SOURCE: &str = M_SOURCE;
 
 #[derive(TypeName)]
@@ -56,6 +57,8 @@ impl VEnvEffect {
             } else {
                 c.set_table_member(ENV_EFFECT, M_SOURCE, ScriptValue::String(path.to_string()))
                     .map_err(|e| anyhow::anyhow!(e))?;
+                c.set_table_member(ENV_EFFECT, M_VOLUME, ScriptValue::Float(source_volume as f64))
+                    .map_err(|e| anyhow::anyhow!(e))?;
             }
         }
 
@@ -89,6 +92,7 @@ impl BaseVariable for VEnvEffect {
     fn regist_to_ctx_impl(ctx: &mut tmj_core::script::ScriptContext) -> anyhow::Result<()> {
         ctx.set_global_table(ENV_EFFECT);
         let _ = ctx.set_table_member(ENV_EFFECT, M_SOURCE, ScriptValue::Nil);
+        let _ = ctx.set_table_member(ENV_EFFECT, M_VOLUME, ScriptValue::Float(1.0));
         let _ = ctx.set_table_func(ENV_EFFECT, SET, |ctx, args| {
             let path = script_args::parse_required_arg(&args, 0, ScriptValue::as_string)
                 .context("env_effect.set requires file path string")?;

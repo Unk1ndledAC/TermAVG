@@ -1,6 +1,8 @@
 use anyhow::Context;
 use ratatui::Terminal;
 use ratatui::prelude::Backend;
+use ratatui::widgets::Paragraph;
+use ratatui::layout::Alignment;
 use std::cell::RefCell;
 use std::sync::mpsc::Receiver;
 use std::thread;
@@ -11,6 +13,7 @@ use tmj_core::event::EventManager;
 use tmj_core::event::{GameEvent, handler::EventDispatcher};
 
 use crate::game::Game;
+use crate::setting::SETTING;
 
 pub struct App<T: Backend> {
     pub terminal: Terminal<T>,
@@ -31,13 +34,39 @@ impl<T: Backend> App<T> {
         receiver: &Receiver<GameEvent>,
         tick_rate: Duration,
     ) -> anyhow::Result<()>
+    where
+        T::Error: std::error::Error + Send + Sync + 'static,
     {
         let mut last_tick = std::time::Instant::now();
         let mut game = app.game.borrow_mut();
         EventManager::with_looper(|l| {
             l.cool_down(Duration::from_millis(100));
         });
-        loop {
+        'main: loop {
+            // 检测终端尺寸
+            let req = SETTING.resolution;
+            let size = app.terminal.backend().size()?;
+            if size.width < req.0 || size.height < req.1 {
+                app.terminal.draw(|f| {
+                    let msg = format!(
+                        "终端尺寸不足：需要 {}×{}，当前 {}×{}\n请调整终端字号\n\n按 Ctrl+C 退出",
+                        req.0, req.1, size.width, size.height
+                    );
+                    f.render_widget(
+                        Paragraph::new(msg).alignment(Alignment::Center),
+                        f.area(),
+                    );
+                }).map_err(|e| anyhow::anyhow!("{e:?}"))?;
+                while let Ok(event) = receiver.try_recv() {
+                    if matches!(event, GameEvent::QuitGame) {
+                        break 'main Ok(());
+                    }
+                }
+                last_tick = std::time::Instant::now();
+                thread::sleep(tick_rate);
+                continue;
+            }
+
             let last_tick_time = last_tick.elapsed();
             last_tick = std::time::Instant::now();
 

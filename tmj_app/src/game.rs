@@ -105,6 +105,8 @@ impl Game {
         GAME_SETTING.with_borrow(|setting| {
             if let Err(e) = setting.apply_setting() {
                 tracing::warn!("apply game setting failed: {:?}", e);
+            } else {
+                tracing::info!("audio volume restored from cache");
             }
         });
 
