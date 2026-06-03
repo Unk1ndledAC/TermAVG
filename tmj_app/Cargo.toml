@@ -2,6 +2,7 @@
 name = "tmj_app"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 publish = ["rsproxy"]
 
 [dependencies]
